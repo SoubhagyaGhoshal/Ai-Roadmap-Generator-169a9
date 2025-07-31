@@ -15,7 +15,7 @@
 
 2. **Install Dependencies**
    ```bash
-   pnpm install
+   npm install
    ```
 
 3. **Set Up Environment Variables**
@@ -29,7 +29,7 @@
 
 4. **Build Locally (Optional)**
    ```bash
-   pnpm build
+   npm run build
    ```
 
 ## Netlify Dashboard Setup
@@ -43,7 +43,7 @@
 - **Repository**: `SoubhagyaGhoshal/Ai-Roadmap-Generator`
 - **Branch**: `main`
 - **Base directory**: (leave empty)
-- **Build command**: `pnpm build`
+- **Build command**: `npm install && npm run build`
 - **Publish directory**: `.next`
 
 ### 3. Environment Variables
@@ -60,8 +60,19 @@ NODE_ENV=production
 ### 4. Build Settings
 - **Node version**: `18`
 - **NPM version**: `10`
-- **Build command**: `pnpm build`
+- **Build command**: `npm install && npm run build`
 - **Publish directory**: `.next`
+
+## Troubleshooting Build Issues
+
+### If build fails with Prisma errors:
+1. Use the simplified build command: `npm install && npm run build`
+2. The app will work without database features (roadmap saving)
+3. All AI generation features will still work perfectly
+
+### If build fails with pnpm errors:
+1. Use `npm` instead of `pnpm` in build settings
+2. Update build command to: `npm install && npm run build`
 
 ## API Keys Setup
 
@@ -81,18 +92,6 @@ NODE_ENV=production
 1. Go to Netlify Dashboard → Site settings → Domain management
 2. Click "Add custom domain"
 3. Follow the DNS configuration instructions
-
-## Troubleshooting
-
-### Build Issues
-- Ensure Node.js version is 18+
-- Check all environment variables are set
-- Verify API keys are valid
-
-### Runtime Issues
-- Check Netlify function logs
-- Verify API endpoints are working
-- Test with different API providers
 
 ## Features
 
