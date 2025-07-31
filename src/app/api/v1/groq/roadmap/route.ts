@@ -24,7 +24,7 @@ export const POST = async (req: NextRequest) => {
       return NextResponse.json(
         { 
           status: false, 
-          message: "Please provide a Groq API key. You can get one from https://console.groq.com/" 
+          message: "No API key provided. Please add GROQ_API_KEY environment variable to your Vercel deployment or provide your own API key. You can get a free API key from https://console.groq.com/" 
         },
         { status: 400 },
       );

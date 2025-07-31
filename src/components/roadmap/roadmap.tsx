@@ -149,10 +149,25 @@ export default function Roadmap({ roadmapId }: Props) {
                       </p>
                     </div>
                     {data && !data.status && (
-                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-sm text-red-600">
-                          Error: {data.message || "Failed to generate roadmap"}
+                      <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <h3 className="text-sm font-semibold text-red-800 mb-2">
+                          Roadmap Generation Failed
+                        </h3>
+                        <p className="text-sm text-red-600 mb-3">
+                          {data.message || "Failed to generate roadmap"}
                         </p>
+                        {data.message?.includes("API key") && (
+                          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                            <p className="text-sm text-yellow-800">
+                              <strong>To fix this:</strong>
+                            </p>
+                            <ol className="text-sm text-yellow-700 mt-2 ml-4 list-decimal">
+                              <li>Get a free API key from <a href="https://console.groq.com/" target="_blank" rel="noopener noreferrer" className="underline">Groq Console</a></li>
+                              <li>Add it to your Vercel environment variables as <code>GROQ_API_KEY</code></li>
+                              <li>Redeploy your application</li>
+                            </ol>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
