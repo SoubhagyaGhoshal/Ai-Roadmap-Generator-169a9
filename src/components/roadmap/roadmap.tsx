@@ -61,6 +61,19 @@ export default function Roadmap({ roadmapId }: Props) {
     query,
     model,
     modelApiKey,
+    {
+      onSuccess: (response: any) => {
+        console.log("Roadmap generation successful:", response);
+        if (response.status === true && response.tree) {
+          console.log("Tree data available:", response.tree);
+        } else {
+          console.error("Invalid response format:", response);
+        }
+      },
+      onError: (error) => {
+        console.error("Roadmap generation failed:", error);
+      },
+    }
   );
 
   // Auto-generate roadmap when query is set from URL
@@ -77,6 +90,12 @@ export default function Roadmap({ roadmapId }: Props) {
   // Remove auto-generation - let users choose their own topics
   const roadmapData = roadmap?.content || data?.tree || decodeFromURL(params);
   const renderFlow = roadmapData?.[0]?.name || "";
+
+  // Debug logging
+  console.log("Roadmap data:", roadmapData);
+  console.log("API data:", data);
+  console.log("Is pending:", isPending);
+  console.log("Has roadmap data:", roadmapData && roadmapData.length > 0);
 
   return (
     <>
@@ -129,6 +148,13 @@ export default function Roadmap({ roadmapId }: Props) {
                         Your roadmap will appear here once generated
                       </p>
                     </div>
+                    {data && !data.status && (
+                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-600">
+                          Error: {data.message || "Failed to generate roadmap"}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
