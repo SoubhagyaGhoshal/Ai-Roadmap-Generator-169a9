@@ -561,6 +561,20 @@ export const GeneratorControls = (props: Props) => {
             </div>
           )}
 
+          {/* Show back button for generated roadmaps without dbRoadmapId */}
+          {!dbRoadmapId && roadmapId && (
+            <div className="flex-1 -ml-6 md:ml-0">
+              <Button 
+                variant="outline" 
+                onClick={() => router.back()}
+                className="group bg-white/80 backdrop-blur-sm border-2 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/80 transition-all duration-300 rounded-xl shadow-md hover:shadow-lg"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform duration-300" />
+                Back
+              </Button>
+            </div>
+          )}
+
           {isAuthor && (
             <Button
               variant="outline"
