@@ -87,6 +87,15 @@ export default function Roadmap({ roadmapId }: Props) {
     }
   }, [params, query, isPending, data, mutate]);
 
+  // Monitor loading state changes
+  useEffect(() => {
+    console.log("Loading state changed - isPending:", isPending);
+    console.log("Data available:", !!data);
+    if (!isPending && data) {
+      console.log("Roadmap generation completed successfully");
+    }
+  }, [isPending, data]);
+
   // Remove auto-generation - let users choose their own topics
   const roadmapData = roadmap?.content || data?.tree || decodeFromURL(params);
   const renderFlow = roadmapData?.[0]?.name || "";
@@ -96,6 +105,9 @@ export default function Roadmap({ roadmapId }: Props) {
   console.log("API data:", data);
   console.log("Is pending:", isPending);
   console.log("Has roadmap data:", roadmapData && roadmapData.length > 0);
+  console.log("Data status:", data?.status);
+  console.log("Data tree:", data?.tree);
+  console.log("Roadmap content:", roadmap?.content);
 
   return (
     <>
