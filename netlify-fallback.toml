@@ -1,11 +1,10 @@
 [build]
-  command = "chmod +x ./netlify-build.sh && ./netlify-build.sh"
+  command = "npm install && npm run build"
   publish = ".next"
 
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "10"
-  PNPM_VERSION = "8"
 
 [[redirects]]
   from = "/*"

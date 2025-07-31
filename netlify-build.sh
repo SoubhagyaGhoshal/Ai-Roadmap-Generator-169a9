@@ -4,16 +4,22 @@
 
 echo "🚀 Starting Netlify build..."
 
+# Check if pnpm is available, if not install it
+if ! command -v pnpm &> /dev/null; then
+    echo "📦 Installing pnpm..."
+    npm install -g pnpm
+fi
+
 # Install dependencies
 echo "📦 Installing dependencies..."
-npm install
+pnpm install --frozen-lockfile
 
 # Generate Prisma client
 echo "🔧 Generating Prisma client..."
-npx prisma generate
+pnpm prisma generate
 
 # Build the application
 echo "🏗️ Building application..."
-npm run build
+pnpm run build
 
 echo "✅ Build completed successfully!" 
