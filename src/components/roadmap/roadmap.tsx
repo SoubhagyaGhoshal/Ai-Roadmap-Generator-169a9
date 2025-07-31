@@ -196,12 +196,6 @@ export default function Roadmap({ roadmapId }: Props) {
     console.log("🎯 Initial hasTriggeredGeneration:", hasTriggeredGeneration);
     console.log("🎯 Initial generatedData:", !!generatedData);
     console.log("🎯 Initial isGenerating:", isGenerating);
-    
-    // Simple test alert
-    const topic = params.get('topic');
-    if (topic) {
-      alert(`Component mounted with topic: ${topic}`);
-    }
   }, [params, query, model, modelApiKey, hasTriggeredGeneration, generatedData, isGenerating]);
 
   // Reset trigger flag when topic changes
