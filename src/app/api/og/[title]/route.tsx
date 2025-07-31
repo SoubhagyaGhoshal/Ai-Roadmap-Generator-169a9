@@ -54,7 +54,7 @@ export async function GET(
         }}
       >
         <div tw="relative w-full flex justify-between flex-row">
-          <img src={docsImageSrc} alt="image" tw="absolute" />
+          <img src={docsImageSrc} alt="image" tw="absolute" style={{ display: 'block' }} />
           <div tw="flex w-full justify-start pl-48 pt-85 text-black max-w-225">
             <p tw="text-8xl">{text}</p>
           </div>

@@ -13,7 +13,7 @@ import { YouTubeEmbed } from "@next/third-parties/google";
 import axios from "axios";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Carousel,
   CarouselContent,
@@ -45,6 +45,32 @@ export const Drawer = ({ roadmapId }: DrawerProps) => {
     );
 
   const nodeName = `${drawerDetails?.query}_${drawerDetails?.parent}_${drawerDetails?.child}`;
+
+  const fetchDataFromAPIs = useCallback(async () => {
+    const detailsData = await fetchDetailsData();
+    const videoIds = await searchYoutube(
+      `${drawerDetails?.query} ${drawerDetails?.parent} ${drawerDetails?.child}`,
+    );
+
+    return { detailsData, videoIds };
+  }, [drawerDetails?.query, drawerDetails?.parent, drawerDetails?.child]);
+
+  const fetchDetailsData = async () => {
+    try {
+      const response = await axios.post(
+        `/api/v1/${model}/details?apiKey=${modelApiKey}&roadmapId=${roadmapId}`,
+        {
+          query: drawerDetails?.query,
+          child: drawerDetails?.child,
+          parent: drawerDetails?.parent,
+        },
+      );
+      return response.data.text;
+    } catch (error) {
+      console.error("Error fetching details data:", error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     const fetchAndSaveData = async () => {
@@ -110,33 +136,9 @@ export const Drawer = ({ roadmapId }: DrawerProps) => {
     drawerDetails?.query,
     drawerDetails?.parent,
     drawerDetails?.child,
+    fetchDataFromAPIs,
+    nodeName,
   ]);
-
-  const fetchDataFromAPIs = async () => {
-    const detailsData = await fetchDetailsData();
-    const videoIds = await searchYoutube(
-      `${drawerDetails?.query} ${drawerDetails?.parent} ${drawerDetails?.child}`,
-    );
-
-    return { detailsData, videoIds };
-  };
-
-  const fetchDetailsData = async () => {
-    try {
-      const response = await axios.post(
-        `/api/v1/${model}/details?apiKey=${modelApiKey}&roadmapId=${roadmapId}`,
-        {
-          query: drawerDetails?.query,
-          child: drawerDetails?.child,
-          parent: drawerDetails?.parent,
-        },
-      );
-      return response.data.text;
-    } catch (error) {
-      console.error("Error fetching details data:", error);
-      return null;
-    }
-  };
 
   const YoutubeVideo = () => {
     return (

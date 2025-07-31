@@ -10,7 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { useShallow } from "zustand/react/shallow";
 import { GeneratorControls } from "@/components/flow-components/generator-controls";
 import { useUIStore } from "../../lib/stores/useUI";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import axios from "axios";
 
 interface Props {
@@ -66,7 +66,7 @@ export default function Roadmap({ roadmapId }: Props) {
   });
 
   // Direct API call function
-  const generateRoadmap = async (topic: string) => {
+  const generateRoadmap = useCallback(async (topic: string) => {
     console.log("🚀 Starting direct API call for:", topic);
     setIsGenerating(true);
     setGenerationError(null);
@@ -92,7 +92,7 @@ export default function Roadmap({ roadmapId }: Props) {
       setIsGenerating(false);
       setTimeoutError(true);
     }
-  };
+  }, [model, modelApiKey]);
 
   // Simplified auto-generation logic
   useEffect(() => {
@@ -286,7 +286,7 @@ export default function Roadmap({ roadmapId }: Props) {
                           Manual Generation
                         </h3>
                         <p className="text-sm text-blue-600 mb-3">
-                          Auto-generation didn't trigger. Click the button below to generate the roadmap manually.
+                          Auto-generation didn&apos;t trigger. Click the button below to generate the roadmap manually.
                         </p>
                         <button
                           onClick={() => {
