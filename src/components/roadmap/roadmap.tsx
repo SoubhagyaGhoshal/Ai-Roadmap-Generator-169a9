@@ -3,7 +3,6 @@
 import { getRoadmapById } from "@/actions/roadmaps";
 import ExpandCollapse from "@/components/flow-components/expand-collapse";
 import { Separator } from "@/components/ui/separator";
-import { useGenerateRoadmap } from "@/lib/queries";
 import { decodeFromURL } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -12,6 +11,7 @@ import { useShallow } from "zustand/react/shallow";
 import { GeneratorControls } from "@/components/flow-components/generator-controls";
 import { useUIStore } from "../../lib/stores/useUI";
 import { useEffect, useRef, useState } from "react";
+import axios from "axios";
 
 interface Props {
   roadmapId?: string;
@@ -30,6 +30,9 @@ export default function Roadmap({ roadmapId }: Props) {
   const params = useSearchParams();
   const [timeoutError, setTimeoutError] = useState(false);
   const [hasTriggeredGeneration, setHasTriggeredGeneration] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedData, setGeneratedData] = useState<any>(null);
+  const [generationError, setGenerationError] = useState<any>(null);
   
   // Handle topic query parameter from URL
   useEffect(() => {
@@ -62,40 +65,34 @@ export default function Roadmap({ roadmapId }: Props) {
     enabled: Boolean(roadmapId),
   });
 
-  const { data, mutate, isPending, error } = useGenerateRoadmap(
-    query,
-    model,
-    modelApiKey,
-    {
-      onSuccess: (response: any) => {
-        console.log("✅ Roadmap generation successful:", response);
-        setTimeoutError(false);
-        if (response.status === true && response.tree) {
-          console.log("✅ Tree data available:", response.tree);
-        } else {
-          console.error("❌ Invalid response format:", response);
-        }
-      },
-      onError: (error: any) => {
-        console.error("❌ Roadmap generation failed:", error);
-        console.error("❌ Error details:", (error as any)?.response?.data);
-        setTimeoutError(true);
-        // Don't retry if it's an API key error
-        if ((error as any)?.response?.data?.message?.includes("API key")) {
-          console.log("🔑 API key error detected, not retrying");
-        }
-      },
-      retry: (failureCount, error: any) => {
-        console.log(`🔄 Retry attempt ${failureCount + 1}`);
-        // Don't retry if it's an API key error
-        if ((error as any)?.response?.data?.message?.includes("API key")) {
-          return false;
-        }
-        // Retry up to 3 times for other errors
-        return failureCount < 3;
-      },
+  // Direct API call function
+  const generateRoadmap = async (topic: string) => {
+    console.log("🚀 Starting direct API call for:", topic);
+    setIsGenerating(true);
+    setGenerationError(null);
+    setTimeoutError(false);
+    
+    try {
+      const apiKeyParam = modelApiKey && modelApiKey.trim() !== "" ? `?apiKey=${modelApiKey}` : "";
+      const url = `/api/v1/${model}/roadmap${apiKeyParam}`;
+      
+      console.log("📡 Making API call to:", url);
+      console.log("📡 Request body:", { query: topic });
+      
+      const response = await axios.post(url, { query: topic }, {
+        timeout: 30000,
+      });
+      
+      console.log("✅ API call successful:", response.data);
+      setGeneratedData(response.data);
+      setIsGenerating(false);
+    } catch (error) {
+      console.error("❌ API call failed:", error);
+      setGenerationError(error);
+      setIsGenerating(false);
+      setTimeoutError(true);
     }
-  );
+  };
 
   // Simplified auto-generation logic
   useEffect(() => {
@@ -103,28 +100,22 @@ export default function Roadmap({ roadmapId }: Props) {
     console.log("🔄 Auto-generation check:");
     console.log("  - Topic from URL:", topic);
     console.log("  - Current query:", query);
-    console.log("  - Is pending:", isPending);
-    console.log("  - Has data:", !!data);
+    console.log("  - Is generating:", isGenerating);
+    console.log("  - Has generated data:", !!generatedData);
     console.log("  - Has triggered generation:", hasTriggeredGeneration);
     
     // If we have a topic and haven't triggered generation yet, do it now
-    if (topic && !hasTriggeredGeneration && !isPending && !data) {
+    if (topic && !hasTriggeredGeneration && !isGenerating && !generatedData) {
       console.log("🚀 Triggering generation for topic:", topic);
       setHasTriggeredGeneration(true);
       
       // Set the query first
       setQuery(topic);
       
-      // Force the mutation to trigger immediately
-      console.log("🔥 Forcing mutation call...");
-      setTimeout(() => {
-        console.log("🔥 Executing mutation for:", topic);
-        mutate({
-          body: { query: topic },
-        });
-      }, 0);
+      // Make the API call directly
+      generateRoadmap(topic);
     }
-  }, [params, isPending, data, mutate, setQuery, hasTriggeredGeneration]);
+  }, [params, isGenerating, generatedData, setQuery, hasTriggeredGeneration, model, modelApiKey]);
 
   // Component mount test
   useEffect(() => {
@@ -139,25 +130,27 @@ export default function Roadmap({ roadmapId }: Props) {
     const topic = params.get('topic');
     if (topic !== query) {
       setHasTriggeredGeneration(false);
-      console.log("🔄 Reset generation trigger flag");
+      setGeneratedData(null);
+      setGenerationError(null);
+      console.log("🔄 Reset generation state");
     }
   }, [params, query]);
 
-  // Monitor loading state changes
+  // Monitor state changes
   useEffect(() => {
     console.log("📊 State update:");
-    console.log("  - isPending:", isPending);
-    console.log("  - has data:", !!data);
-    console.log("  - error:", error);
-    if (!isPending && data) {
+    console.log("  - isGenerating:", isGenerating);
+    console.log("  - has generated data:", !!generatedData);
+    console.log("  - error:", generationError);
+    if (!isGenerating && generatedData) {
       console.log("✅ Roadmap generation completed successfully");
     }
-  }, [isPending, data, error]);
+  }, [isGenerating, generatedData, generationError]);
 
   // Timeout handling - if loading for more than 30 seconds, show error
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    if (isPending) {
+    if (isGenerating) {
       timeoutId = setTimeout(() => {
         console.log("⏰ Request timeout - showing error");
         setTimeoutError(true);
@@ -168,33 +161,33 @@ export default function Roadmap({ roadmapId }: Props) {
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [isPending]);
+  }, [isGenerating]);
 
-  const roadmapData = roadmap?.content || data?.tree || decodeFromURL(params);
+  const roadmapData = roadmap?.content || generatedData?.tree || decodeFromURL(params);
   const renderFlow = roadmapData?.[0]?.name || "";
 
   // Debug logging
   console.log("🔍 Final state:");
   console.log("  - Roadmap data:", roadmapData);
-  console.log("  - API data:", data);
-  console.log("  - Is pending:", isPending);
+  console.log("  - Generated data:", generatedData);
+  console.log("  - Is generating:", isGenerating);
   console.log("  - Has roadmap data:", roadmapData && roadmapData.length > 0);
-  console.log("  - Data status:", data?.status);
-  console.log("  - Data tree:", data?.tree);
+  console.log("  - Data status:", generatedData?.status);
+  console.log("  - Data tree:", generatedData?.tree);
   console.log("  - Roadmap content:", roadmap?.content);
   console.log("  - Model API Key:", modelApiKey ? "SET" : "NOT SET");
   console.log("  - Model:", model);
-  console.log("  - Error:", error);
+  console.log("  - Error:", generationError);
   console.log("  - Timeout error:", timeoutError);
 
   return (
     <>
       <div className="mx-auto max-w-7xl">
         <GeneratorControls
-          mutate={mutate}
-          isPending={isPending}
+          mutate={() => {}} // Empty function since we're not using React Query mutation
+          isPending={isGenerating}
           renderFlow={renderFlow}
-          roadmapId={data?.roadmapId}
+          roadmapId={generatedData?.roadmapId}
           dbRoadmapId={roadmapId || ""}
           visibility={roadmap?.visibility}
           title={query}
@@ -202,7 +195,7 @@ export default function Roadmap({ roadmapId }: Props) {
         />
       </div>
       <Separator />
-      {isPending ? (
+      {isGenerating ? (
         <div className="h-[75vh] grid place-content-center">
           <div className="text-center">
             <Loader2 className="animate-spin w-8 h-8 mx-auto mb-4" />
@@ -214,10 +207,10 @@ export default function Roadmap({ roadmapId }: Props) {
                 </p>
               </div>
             )}
-            {error && (
+            {generationError && (
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg max-w-md mx-auto">
                 <p className="text-sm text-red-600">
-                  Error: {(error as any)?.response?.data?.message || (error as any)?.message || "Unknown error"}
+                  Error: {(generationError as any)?.response?.data?.message || (generationError as any)?.message || "Unknown error"}
                 </p>
               </div>
             )}
@@ -235,7 +228,7 @@ export default function Roadmap({ roadmapId }: Props) {
             <ExpandCollapse
               key={renderFlow}
               data={roadmapData}
-              isPending={isRoadmapPending || isPending}
+              isPending={isRoadmapPending || isGenerating}
               roadmapId={roadmapId}
             />
           ) : (
@@ -255,15 +248,15 @@ export default function Roadmap({ roadmapId }: Props) {
                         Your roadmap will appear here once generated
                       </p>
                     </div>
-                    {data && !data.status && (
+                    {generatedData && !generatedData.status && (
                       <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                         <h3 className="text-sm font-semibold text-red-800 mb-2">
                           Roadmap Generation Failed
                         </h3>
                         <p className="text-sm text-red-600 mb-3">
-                          {data.message || "Failed to generate roadmap"}
+                          {generatedData.message || "Failed to generate roadmap"}
                         </p>
-                        {data.message?.includes("API key") && (
+                        {generatedData.message?.includes("API key") && (
                           <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
                             <p className="text-sm text-yellow-800">
                               <strong>To fix this:</strong>
@@ -277,17 +270,17 @@ export default function Roadmap({ roadmapId }: Props) {
                         )}
                       </div>
                     )}
-                    {error && (
+                    {generationError && (
                       <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                         <h3 className="text-sm font-semibold text-red-800 mb-2">
                           Generation Error
                         </h3>
                         <p className="text-sm text-red-600">
-                          {(error as any)?.response?.data?.message || (error as any)?.message || "An error occurred during generation"}
+                          {(generationError as any)?.response?.data?.message || (generationError as any)?.message || "An error occurred during generation"}
                         </p>
                       </div>
                     )}
-                    {params.get('topic') && !data && !isPending && (
+                    {params.get('topic') && !generatedData && !isGenerating && (
                       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                         <h3 className="text-sm font-semibold text-blue-800 mb-2">
                           Manual Generation
@@ -300,9 +293,7 @@ export default function Roadmap({ roadmapId }: Props) {
                             const topic = params.get('topic');
                             if (topic) {
                               setQuery(topic);
-                              mutate({
-                                body: { query: topic },
-                              });
+                              generateRoadmap(topic);
                             }
                           }}
                           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
