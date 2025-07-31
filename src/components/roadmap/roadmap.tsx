@@ -120,6 +120,8 @@ export default function Roadmap({ roadmapId }: Props) {
   console.log("Data status:", data?.status);
   console.log("Data tree:", data?.tree);
   console.log("Roadmap content:", roadmap?.content);
+  console.log("Model API Key:", modelApiKey ? "SET" : "NOT SET");
+  console.log("Model:", model);
 
   return (
     <>

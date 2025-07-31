@@ -20,9 +20,11 @@ export const POST = async (req: NextRequest) => {
     // Debug logging
     console.log("API Key from params:", apiKey ? "provided" : "not provided");
     console.log("Environment GROQ_API_KEY:", process.env.GROQ_API_KEY ? "available" : "not available");
+    console.log("Query:", query);
 
     // Check if we have an API key (either from user or environment)
-    const groqApiKey = apiKey || process.env.GROQ_API_KEY;
+    // If apiKey is empty string or null, use environment variable
+    const groqApiKey = (apiKey && apiKey.trim() !== "") ? apiKey : process.env.GROQ_API_KEY;
     
     if (!groqApiKey) {
       console.error("No API key available - neither from params nor environment");
