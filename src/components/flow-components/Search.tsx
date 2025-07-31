@@ -35,7 +35,7 @@ const Search = () => {
     queryKey: ["public-roadmaps"],
     queryFn: async () => {
       // TODO : page count and exceed page count logic
-      const { roadmaps, pageCount } = await getPaginatedPublicRoadmaps({
+      const { roadmaps, totalCount } = await getPaginatedPublicRoadmaps({
         page: parseInt(page),
         pageSize: 21,
       });
@@ -43,7 +43,7 @@ const Search = () => {
     },
   });
 
-  const [filteredRoadmaps, setFilteredRoadmaps] = useState<typeof roadmaps>([]);
+  const [filteredRoadmaps, setFilteredRoadmaps] = useState<any[]>([]);
 
   useEffect(() => {
     if (roadmaps) {
@@ -67,13 +67,12 @@ const Search = () => {
           value={form.getValues().query}
           onChange={(e) => {
             form.setValue("query", e.target.value);
-            setFilteredRoadmaps(
-              roadmaps?.filter((roadmap) =>
-                roadmap.title
-                  .toLowerCase()
-                  .includes(e.target.value.toLowerCase())
-              )
-            );
+            const filtered = roadmaps?.filter((roadmap: any) =>
+              roadmap.title
+                .toLowerCase()
+                .includes(e.target.value.toLowerCase())
+            ) || [];
+            setFilteredRoadmaps(filtered);
           }}
         />
       </div>{" "}
@@ -84,16 +83,16 @@ const Search = () => {
       ) : filteredRoadmaps && filteredRoadmaps?.length > 0 ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6 mb-10">
-            {filteredRoadmaps?.map((roadmap) => (
+            {filteredRoadmaps?.map((roadmap: any) => (
               <RoadmapCard
                 key={roadmap.id}
-                author={roadmap.author.name}
+                author={roadmap.author?.name || "Anonymous"}
                 title={roadmap.title}
-                views={roadmap.views.toString()}
+                views={roadmap.views?.toString() || "0"}
                 timeAgo={timeFromNow(roadmap?.createdAt?.toString())}
                 slug={roadmap.id}
                 savedRoadmapId={roadmap.id}
-                imageUrl={roadmap.author.imageUrl!}
+                imageUrl={roadmap.author?.imageUrl}
               />
             ))}
           </div>

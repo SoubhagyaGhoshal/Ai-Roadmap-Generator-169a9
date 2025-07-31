@@ -11,29 +11,46 @@ import { useSearchParams } from "next/navigation";
 import { useShallow } from "zustand/react/shallow";
 import { GeneratorControls } from "@/components/flow-components/generator-controls";
 import { useUIStore } from "../../lib/stores/useUI";
+import { useEffect } from "react";
 
 interface Props {
   roadmapId?: string;
 }
 
 export default function Roadmap({ roadmapId }: Props) {
-  const { model, modelApiKey, query } = useUIStore(
+  const { model, query, setQuery } = useUIStore(
     useShallow((state) => ({
       model: state.model,
       query: state.query,
-      modelApiKey: state.modelApiKey,
+      setQuery: state.setQuery,
     })),
   );
 
+  const params = useSearchParams();
+  
+  // Handle topic query parameter from URL
+  useEffect(() => {
+    const topic = params.get('topic');
+    if (topic && !query) {
+      setQuery(topic);
+    }
+  }, [params, query, setQuery]);
+
   const { data: roadmap, isPending: isRoadmapPending } = useQuery({
     queryFn: async () => {
-      let roadmap = await getRoadmapById(roadmapId || "");
-      if (roadmap) {
-        let json = JSON.parse(roadmap.content);
-        roadmap.content = json;
-        return roadmap;
+      if (!roadmapId) return null;
+      let roadmap = await getRoadmapById(roadmapId);
+      if (roadmap && roadmap.content) {
+        try {
+          let json = JSON.parse(roadmap.content);
+          roadmap.content = json;
+          return roadmap;
+        } catch (error) {
+          console.error("Error parsing roadmap content:", error);
+          return roadmap;
+        }
       }
-      throw Error("error");
+      return roadmap;
     },
     queryKey: ["Roadmap", roadmapId],
     enabled: Boolean(roadmapId),
@@ -42,11 +59,10 @@ export default function Roadmap({ roadmapId }: Props) {
   const { data, mutate, isPending } = useGenerateRoadmap(
     query,
     model,
-    modelApiKey,
+    "",
   );
 
-  const params = useSearchParams();
-
+  // Remove auto-generation - let users choose their own topics
   const roadmapData = roadmap?.content || data?.tree || decodeFromURL(params);
   const renderFlow = roadmapData?.[0]?.name || "";
 
@@ -91,23 +107,14 @@ export default function Roadmap({ roadmapId }: Props) {
                   <h1 className="text-4xl font-bold text-gray-900 mb-4">
                     AI Roadmap Generator
                   </h1>
-                  <p className="text-lg text-gray-600">
-                    Generate personalized learning roadmaps for any topic
-                  </p>
                 </div>
                 
                 <div className="bg-white rounded-lg shadow-sm border p-6">
                   <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
                       <p className="text-sm text-gray-600">
-                        Enter a topic above and click generate to create your learning roadmap
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <p className="text-sm text-gray-600">
-                        Add your API key using the &quot;Add Key&quot; button to generate unlimited roadmaps
+                        Your roadmap will appear here once generated
                       </p>
                     </div>
                   </div>

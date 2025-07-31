@@ -17,15 +17,7 @@ const MobileDrawer = () => {
         side="left"
         className=" h-full flex flex-col items-center justify-center gap-4"
       >
-        <SheetClose asChild>
-          <Link href="/explore">Explore</Link>
-        </SheetClose>
-        <SheetClose asChild>
-          <Link href="/dashboard">Dashboard</Link>
-        </SheetClose>
-        <SheetClose asChild>
-          <Link href="/roadmap">Roadmap</Link>
-        </SheetClose>
+        {/* Navigation items removed as requested */}
       </SheetContent>
     </Sheet>
   );

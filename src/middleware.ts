@@ -3,19 +3,29 @@ import { authMiddleware } from "@clerk/nextjs";
 // See https://clerk.com/docs/references/nextjs/auth-middleware
 // for more information about configuring your Middleware
 export default authMiddleware({
-  // Allow signed out users to access the specified routes:
+  // Allow signed out users to access specific routes:
   publicRoutes: [
     "/",
-    "/api/health",
-    "/api/webhook(.*)",
-    "/api/og/(.*)",
     "/explore",
     "/roadmap",
     "/roadmap/(.*)",
-    "/dashboard",
-    "/dashboard/(.*)",
+    "/test-roadmap",
+    "/api/health",
+    "/api/v1/(.*)",
+    "/api/og/(.*)",
+    "/api/webhook/(.*)",
+    "/api/test-db",
+    "/api/setup-db",
   ],
-  debug: true,
+  ignoredRoutes: [
+    "/api/health",
+    "/api/v1/(.*)",
+    "/api/og/(.*)",
+    "/api/webhook/(.*)",
+    "/api/test-db",
+    "/api/setup-db",
+  ],
+  debug: false,
 });
 
 export const config = {

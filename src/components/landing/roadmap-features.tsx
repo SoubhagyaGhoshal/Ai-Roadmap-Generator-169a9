@@ -1,4 +1,4 @@
-import { Book, GlobeLock, Network } from "lucide-react";
+import { GlobeLock, Network, Zap } from "lucide-react";
 
 const features = [
   {
@@ -8,10 +8,10 @@ const features = [
     icon: Network,
   },
   {
-    name: "Book Recomendations.",
+    name: "AI-Powered Generation.",
     description:
-      "We help you with relivant books to read to understand the topic better. Powered by Oriley.",
-    icon: Book,
+      "Advanced AI models generate comprehensive learning roadmaps tailored to your specific topic and skill level.",
+    icon: Zap,
   },
   {
     name: "Privacy Friendly.",

@@ -18,8 +18,8 @@ export default async function Dashboard() {
         </h2>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {roadmaps.length > 0 &&
-          roadmaps.map((roadmap) => (
+        {roadmaps && roadmaps.length > 0 ? (
+          roadmaps.map((roadmap: any) => (
             <RoadmapCard
               key={roadmap.id}
               title={roadmap.title}
@@ -28,8 +28,8 @@ export default async function Dashboard() {
               slug={roadmap.id}
               savedRoadmapId=""
             />
-          ))}
-        {roadmaps.length === 0 && (
+          ))
+        ) : (
           <div className="col-span-full flex justify-center">
             <EmptyAlert
               title="No roadmaps"
@@ -44,8 +44,8 @@ export default async function Dashboard() {
         </h2>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {savedRoadmaps.length > 0 &&
-          savedRoadmaps.map((roadmap) => (
+        {savedRoadmaps && savedRoadmaps.length > 0 ? (
+          savedRoadmaps.map((roadmap: any) => (
             <RoadmapCard
               key={roadmap.id}
               title={roadmap.title}
@@ -53,8 +53,8 @@ export default async function Dashboard() {
               savedRoadmapId={roadmap.id}
               savedRoadmapCard
             />
-          ))}
-        {savedRoadmaps.length === 0 && (
+          ))
+        ) : (
           <div className="col-span-full flex justify-center">
             <EmptyAlert
               title="No saved roadmaps"

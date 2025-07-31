@@ -1,11 +1,4 @@
-import {
-  incrementRoadmapSearchCount,
-  incrementUserCredits,
-  saveRoadmap,
-} from "@/actions/roadmaps";
-import { decrementCreditsByUserId } from "@/actions/users";
 import { Node } from "@/lib/shared/types/common";
-import { db } from "@/lib/db";
 import { JSONType } from "@/lib/types";
 import { capitalize } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
@@ -18,38 +11,13 @@ export const POST = async (req: NextRequest) => {
     const query = body.query;
 
     const openai = new OpenAI({
-      apiKey: apiKey || process.env.OPENAI_API_KEY,
+      apiKey: apiKey || process.env.OPENAI_API_KEY || "sk-demo-key",
     });
 
     if (!query) {
       return NextResponse.json(
         { status: false, message: "Please send query." },
         { status: 400 }
-      );
-    }
-    if (!apiKey && !process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { status: false, message: "Please provide API key." },
-        { status: 400 }
-      );
-    }
-    const normalizedQuery = query.replace(/\s+/g, "").toLowerCase();
-
-    const alreadyExists = await db.roadmap.findMany({
-      where: {
-        title: {
-          mode: "insensitive",
-          contains: normalizedQuery,
-        },
-      },
-    });
-
-    if (alreadyExists.length > 0) {
-      await incrementRoadmapSearchCount(alreadyExists[0].id);
-      const tree = JSON.parse(alreadyExists[0].content);
-      return NextResponse.json(
-        { status: true, tree, roadmapId: alreadyExists[0].id },
-        { status: 200 }
       );
     }
 
@@ -60,39 +28,38 @@ export const POST = async (req: NextRequest) => {
         {
           role: "system",
           content:
-            "You are a helpful AI assistant that can generate career/syllabus roadmap. you can arrange it in a way so that the order of the chapters is always from beginner to advanced. always generate a minimum of 4 modules inside a chapter, link to wikipedia if possible. PLEASE REFRAIN FROM GENERATING ANY OBSCENE CONTENT AS THIS PLATFORM IS A LEARNING PLATFORM.",
+            "You are a helpful AI assistant that can generate career/syllabus roadmap. You can arrange it in a way so that the order of the chapters is always from beginner to advanced. Always generate a minimum of 4 modules inside a chapter, link to wikipedia if possible. You must return ONLY valid JSON, no additional text or explanations. PLEASE REFRAIN FROM GENERATING ANY OBSCENE CONTENT AS THIS PLATFORM IS A LEARNING PLATFORM. IMPORTANT: Use the exact query term provided by the user - do not substitute or interpret it differently.",
         },
         {
           role: "user",
-          content: `Generate a roadmap in JSON format related to the title: ${query} which has the JSON structure: {query: ${query}, chapters: {chapterName: [{moduleName: string, moduleDescription: string, link?: string}]}}`,
+          content: `Generate a roadmap in JSON format related to the title: ${query}. Return ONLY the JSON, no other text. Use "${query}" exactly as provided - do not change or interpret the query term. Use this exact structure:
+
+{
+  "query": "${query}",
+  "chapters": {
+    "Fundamentals": [
+      {
+        "moduleName": "Introduction to ${query}",
+        "moduleDescription": "Basic concepts and overview",
+        "link": "https://en.wikipedia.org/wiki/${query.replace(/\s+/g, '_')}"
+      }
+    ],
+    "Intermediate": [
+      {
+        "moduleName": "Advanced ${query} Concepts",
+        "moduleDescription": "Deeper understanding and practical applications",
+        "link": "https://en.wikipedia.org/wiki/${query.replace(/\s+/g, '_')}_programming"
+      }
+    ]
+  }
+}
+
+Generate 3-5 chapters with 4-6 modules each. Return ONLY the JSON object. Use "${query}" exactly as provided.`,
         },
       ],
       response_format: { type: "json_object" },
     });
-    if (!apiKey) {
-      try {
-        const creditsRemaining = await decrementCreditsByUserId();
-        if (!creditsRemaining) {
-          return NextResponse.json(
-            {
-              status: true,
-              message: "No credits remaining",
-            },
-            { status: 400 }
-          );
-        }
-      } catch (e) {
-        await incrementUserCredits();
-        console.log(e);
-        return NextResponse.json(
-          {
-            status: false,
-            message: "An error occurred while managing credits.",
-          },
-          { status: 500 }
-        );
-      }
-    }
+
     let json: JSONType | null = null;
 
     try {
@@ -107,6 +74,14 @@ export const POST = async (req: NextRequest) => {
           { status: 500 }
         );
       }
+      
+      // Verify that the query in the response matches the original query
+      if (json.query !== query) {
+        console.log(`Query mismatch: original="${query}", response="${json.query}"`);
+        // Force the correct query
+        json.query = query;
+      }
+      
       const tree: Node[] = [
         {
           name: capitalize(json.query),
@@ -122,9 +97,9 @@ export const POST = async (req: NextRequest) => {
           })),
         },
       ];
-      const { data } = await saveRoadmap(query, tree);
+      
       return NextResponse.json(
-        { status: true, text: json, tree, roadmapId: data?.id },
+        { status: true, text: json, tree, roadmapId: "temp-" + Date.now() },
         { status: 200 }
       );
     } catch (e) {

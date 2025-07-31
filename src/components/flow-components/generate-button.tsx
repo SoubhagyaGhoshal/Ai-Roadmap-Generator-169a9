@@ -1,33 +1,33 @@
 "use client";
+
 import { Button } from "@/components/ui/button";
-import { LoaderCircle, Wand } from "lucide-react";
+import { Loader2, Wand2 } from "lucide-react";
 
 interface Props {
-  onClick: (
-    e:
-      | React.MouseEvent<HTMLButtonElement, MouseEvent>
-      | React.FormEvent<HTMLFormElement>
-      | React.KeyboardEvent<HTMLInputElement>
-  ) => Promise<string | number | undefined>;
-  disabled: boolean;
+  onClick: (e: any) => void;
+  disabled?: boolean;
+  isPending?: boolean;
+  autoGenerate?: boolean;
 }
 
-const GenerateButton = ({ disabled, onClick }: Props) => {
+export default function GenerateButton({
+  onClick,
+  disabled = false,
+  isPending = false,
+  autoGenerate = false,
+}: Props) {
   return (
-    <Button onClick={onClick} disabled={disabled} type="submit">
-      {disabled ? (
-        <>
-          <LoaderCircle size={20} className="animate-spin" />
-          <span className="ml-2 hidden sm:inline">Generating</span>
-        </>
+    <Button
+      onClick={onClick}
+      disabled={disabled || isPending}
+      className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+    >
+      {isPending ? (
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       ) : (
-        <>
-          <Wand size={20} />
-          <span className="ml-2 hidden md:inline">Generate</span>
-        </>
+        <Wand2 className="mr-2 h-4 w-4" />
       )}
+      {autoGenerate ? "Auto Generate" : "Generate"}
     </Button>
   );
-};
-
-export default GenerateButton;
+}

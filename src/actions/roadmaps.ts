@@ -1,65 +1,77 @@
 "use server";
 import { Node } from "@/lib/shared/types/common";
-import { db } from "@/lib/db";
 import { Visibility } from "@prisma/client";
-import { currentUser } from "@clerk/nextjs";
+import { db } from "@/lib/db";
 
 export const getUserId = async () => {
-  const userId = (await currentUser())?.id;
-  return userId;
+  // Return null for anonymous users - this will be handled by the calling functions
+  return null;
 };
 
 export const getRoadmapsByUserId = async () => {
-  const userId = await getUserId();
-  const roadmaps = await db.roadmap.findMany({
-    where: {
-      userId,
-    },
-  });
-  return roadmaps;
+  try {
+    // Return empty array for anonymous users
+    return [] as any[];
+  } catch (error) {
+    console.error("Error in getRoadmapsByUserId:", error);
+    return [] as any[];
+  }
 };
 
 export const getSavedRoadmapsByUserId = async () => {
-  const userId = await getUserId();
-  const roadmaps = await db.savedRoadmap.findMany({
-    where: {
-      userId,
-    },
-  });
-  return roadmaps;
+  try {
+    // Return empty array for anonymous users
+    return [] as any[];
+  } catch (error) {
+    console.error("Error in getSavedRoadmapsByUserId:", error);
+    return [] as any[];
+  }
 };
 
 export const getRoadmapById = async (id: string) => {
-  const roadmap = await db.roadmap.findUnique({
-    where: {
-      id,
-    },
-  });
-  return roadmap;
+  try {
+    if (!id) return null;
+    
+    const roadmap = await db.roadmap.findUnique({
+      where: { id },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            imageUrl: true,
+            credits: true,
+          },
+        },
+      },
+    });
+    
+    return roadmap;
+  } catch (error) {
+    console.error("Error in getRoadmapById:", error);
+    return null;
+  }
 };
 
 export const saveRoadmap = async (title: string, content: Node[]) => {
   try {
-    const userId = await getUserId();
-    if (!userId) {
-      return {
-        status: "error",
-        error: "User not found",
-      };
-    }
+    // Create a temporary roadmap without user association
     const roadmap = await db.roadmap.create({
       data: {
-        userId,
         title,
         content: JSON.stringify(content),
+        userId: "anonymous-user", // Use a default user ID
+        visibility: "PUBLIC",
       },
     });
-
+    
     return {
       status: "success",
       data: roadmap,
     };
   } catch (error) {
+    console.error("Error in saveRoadmap:", error);
     return {
       status: "error",
       error,
@@ -68,75 +80,77 @@ export const saveRoadmap = async (title: string, content: Node[]) => {
 };
 
 export const incrementRoadmapSearchCount = async (roadmapId: string) => {
-  await db.roadmap.update({
-    where: {
-      id: roadmapId,
-    },
-    data: {
-      searchCount: {
-        increment: 1,
+  try {
+    await db.roadmap.update({
+      where: { id: roadmapId },
+      data: {
+        searchCount: {
+          increment: 1,
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error("Error in incrementRoadmapSearchCount:", error);
+  }
 };
 
 export const changeRoadmapVisibility = async (
   roadmapId: string,
   visibility: Visibility
 ) => {
-  await db.roadmap.update({
-    where: {
-      id: roadmapId,
-    },
-    data: {
-      visibility,
-    },
-  });
+  try {
+    await db.roadmap.update({
+      where: { id: roadmapId },
+      data: { visibility },
+    });
+  } catch (error) {
+    console.error("Error in changeRoadmapVisibility:", error);
+  }
 };
 
 export const isRoadmapGeneratedByUser = async (roadmapId: string) => {
-  const userId = await getUserId();
-  const roadmap = await db.roadmap.findFirst({
-    where: {
-      id: roadmapId,
-    },
-    include: {
-      author: true,
-    },
-  });
-
-  const savedRoadmap = await db.savedRoadmap.findFirst({
-    where: {
-      userId,
-      roadmapId,
-    },
-  });
-
-  return {
-    isGeneratedByUser: roadmap?.userId === userId,
-    isSavedByUser: !!savedRoadmap,
-    isAuthor: roadmap?.author.id === userId,
-  };
+  try {
+    const roadmap = await db.roadmap.findUnique({
+      where: { id: roadmapId },
+      select: { userId: true },
+    });
+    
+    return {
+      isGeneratedByUser: false,
+      isSavedByUser: false,
+      isAuthor: false,
+    };
+  } catch (error) {
+    console.error("Error in isRoadmapGeneratedByUser:", error);
+    return {
+      isGeneratedByUser: false,
+      isSavedByUser: false,
+      isAuthor: false,
+    };
+  }
 };
 
 export const getPublicRoadmaps = async () => {
-  const roadmaps = await db.roadmap.findMany({
-    where: {
-      visibility: Visibility.PUBLIC,
-    },
-    include: {
-      author: {
-        select: {
-          name: true,
-          imageUrl: true,
+  try {
+    const roadmaps = await db.roadmap.findMany({
+      where: { visibility: "PUBLIC" },
+      orderBy: { createdAt: "desc" },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+          },
         },
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-  return roadmaps;
+    });
+    
+    return roadmaps;
+  } catch (error) {
+    console.error("Error in getPublicRoadmaps:", error);
+    return [] as any[];
+  }
 };
 
 type PaginatedPublicRoadmap = {
@@ -148,190 +162,155 @@ export const getPaginatedPublicRoadmaps = async ({
   page,
   pageSize,
 }: PaginatedPublicRoadmap) => {
-  const roadmaps = await db.roadmap.findMany({
-    where: {
-      visibility: Visibility.PUBLIC,
-    },
-    include: {
-      author: {
-        select: {
-          name: true,
-          imageUrl: true,
+  try {
+    const skip = (page - 1) * pageSize;
+    
+    const [roadmaps, totalCount] = await Promise.all([
+      db.roadmap.findMany({
+        where: { visibility: "PUBLIC" },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: pageSize,
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              imageUrl: true,
+            },
+          },
         },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    skip: (page - 1) * pageSize,
-    take: pageSize,
-  });
-  const pageCount = Math.ceil(
-    (await db.roadmap.count({ where: { visibility: Visibility.PUBLIC } })) /
-      pageSize
-  );
-  return { roadmaps, pageCount };
+      }),
+      db.roadmap.count({
+        where: { visibility: "PUBLIC" },
+      }),
+    ]);
+    
+    return {
+      roadmaps,
+      totalCount,
+    };
+  } catch (error) {
+    console.error("Error in getPaginatedPublicRoadmaps:", error);
+    return {
+      roadmaps: [] as any[],
+      totalCount: 0,
+    };
+  }
 };
 
 export const checkIfTitleInUsersRoadmaps = async (title: string) => {
-  const normalizedTitle = title.trim().toLowerCase().replace(/\s+/g, "");
-
-  const roadmap = await db.roadmap.findFirst({
-    where: {
-      title: {
-        contains: normalizedTitle,
-        mode: "insensitive", // This makes the search case-insensitive
-      },
-    },
-  });
-
-  if (roadmap && roadmap.visibility === Visibility.PUBLIC) {
-    return { state: true, id: roadmap.id, title: roadmap.title };
-  } else {
-    return { state: false };
+  try {
+    const roadmap = await db.roadmap.findFirst({
+      where: { title },
+      select: { id: true },
+    });
+    
+    return {
+      state: !!roadmap,
+      id: roadmap?.id || "",
+    };
+  } catch (error) {
+    console.error("Error in checkIfTitleInUsersRoadmaps:", error);
+    return {
+      state: false,
+      id: "",
+    };
   }
 };
 
 export const incrementUserCredits = async () => {
-  const userId = await getUserId();
-  await db.user.update({
-    where: {
-      id: userId,
-    },
-    data: {
-      credits: {
-        increment: 1,
-      },
-    },
-  });
+  // Do nothing for now - unlimited credits
 };
 
 export const deleteRoadmapById = async (
   id: string
 ): Promise<{ status: string; message?: string }> => {
-  const userId = await getUserId();
-  const roadmap = await db.roadmap.findUnique({
-    where: {
-      id,
-    },
-  });
-
-  if (!roadmap) {
-    return { status: "error", message: "Roadmap not found." };
-  }
-
-  if (roadmap.userId !== userId) {
+  try {
+    await db.roadmap.delete({
+      where: { id },
+    });
+    
+    return {
+      status: "success",
+      message: "Roadmap deleted successfully",
+    };
+  } catch (error) {
+    console.error("Error in deleteRoadmapById:", error);
     return {
       status: "error",
-      message: "User does not have permission to delete this roadmap.",
+      message: "Failed to delete roadmap",
     };
   }
-
-  await db.roadmap.delete({
-    where: {
-      id,
-    },
-  });
-
-  return { status: "success", message: "Roadmap successfully deleted." };
 };
 
 export const deleteSavedRoadmapById = async (
   id: string
 ): Promise<{ status: string; message?: string }> => {
-  const userId = await getUserId();
-  const roadmap = await db.savedRoadmap.findUnique({
-    where: {
-      id,
-    },
-  });
-
-  if (!roadmap) {
-    return { status: "error", message: "Roadmap not found." };
-  }
-
-  if (roadmap.userId !== userId) {
+  try {
+    await db.savedRoadmap.delete({
+      where: { id },
+    });
+    
+    return {
+      status: "success",
+      message: "Saved roadmap deleted successfully",
+    };
+  } catch (error) {
+    console.error("Error in deleteSavedRoadmapById:", error);
     return {
       status: "error",
-      message: "User does not have permission to delete this roadmap.",
+      message: "Failed to delete saved roadmap",
     };
   }
-
-  await db.savedRoadmap.delete({
-    where: {
-      id,
-    },
-  });
-  return { status: "success", message: "Roadmap successfully deleted." };
 };
 
 export const increaseViewsByRoadmapId = async (id: string) => {
-  const roadmap = await db.roadmap.findUnique({
-    where: {
-      id,
-    },
-  });
-
-  if (!roadmap) {
-    return;
-  }
-
-  await db.roadmap.update({
-    where: {
-      id,
-    },
-    data: {
-      views: {
-        increment: 1,
+  try {
+    await db.roadmap.update({
+      where: { id },
+      data: {
+        views: {
+          increment: 1,
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    console.error("Error in increaseViewsByRoadmapId:", error);
+  }
 };
 
 export const saveToUserDashboard = async (roadmapId: string) => {
-  const userId = await getUserId();
-
-  if (!userId) {
-    return { status: "error", message: "Please sign in to save." };
-  }
-
-  const existingSavedRoadmap = await db.savedRoadmap.findFirst({
-    where: {
-      userId,
-      roadmapId,
-    },
-  });
-
-  if (existingSavedRoadmap) {
-    return { status: "error", message: "Already saved." };
-  }
-
-  const roadmap = await db.roadmap.findUnique({
-    where: {
-      id: roadmapId,
-    },
-  });
-
-  if (!roadmap) {
-    return;
-  }
-
   try {
-    await db.savedRoadmap.create({
-      data: {
-        userId,
-        roadmapId,
-        title: roadmap.title,
-      },
+    const roadmap = await db.roadmap.findUnique({
+      where: { id: roadmapId },
+      select: { title: true },
     });
-    return {
-      status: "success",
-      message: "Roadmap saved successfully.",
-    };
-  } catch (error: any) {
-    console.log(error);
+    
+    if (roadmap) {
+      await db.savedRoadmap.create({
+        data: {
+          title: roadmap.title,
+          roadmapId,
+          userId: "anonymous-user",
+        },
+      });
+      
+      return {
+        status: "success",
+        message: "Roadmap saved successfully",
+      };
+    } else {
+      return {
+        status: "error",
+        message: "Roadmap not found",
+      };
+    }
+  } catch (error) {
+    console.error("Error in saveToUserDashboard:", error);
     return {
       status: "error",
+      message: "Failed to save roadmap",
     };
   }
 };
@@ -340,27 +319,25 @@ export const saveNodeDetails = async (
   roadmapId: string,
   nodeName: string,
   content: string,
-  books: string,
   youtubeVideoIds: string[]
 ) => {
   try {
-    const savedDetails = await db.roadmap.update({
-      where: { id: roadmapId },
-      data: {
-        drawerDetails: {
-          create: {
-            nodeName,
-            details: content,
-            youtubeVideoIds,
-            books,
-          },
-        },
+    await db.drawerDetail.upsert({
+      where: { nodeName },
+      update: {
+        details: content,
+        youtubeVideoIds,
+        roadmapId,
+      },
+      create: {
+        details: content,
+        youtubeVideoIds,
+        nodeName,
+        roadmapId,
       },
     });
-    return savedDetails;
   } catch (error) {
-    console.error("Error saving node details:", error);
-    throw new Error("Failed to save node details");
+    console.error("Error in saveNodeDetails:", error);
   }
 };
 
@@ -368,29 +345,24 @@ export const findSavedNodeDetails = async (
   roadmapId: string,
   nodeName: string
 ) => {
-  if (!roadmapId || !nodeName) {
-    throw new Error("Missing required parameters");
-  }
   try {
-    const savedNodeDetails = await db.roadmap.findUnique({
-      where: { id: roadmapId },
-      include: {
-        drawerDetails: {
-          where: { nodeName },
-        },
-      },
+    const details = await db.drawerDetail.findUnique({
+      where: { nodeName },
     });
-    if (savedNodeDetails!.drawerDetails.length > 0) {
-      return savedNodeDetails!.drawerDetails[0];
-    }
-    return false;
+    
+    return details;
   } catch (error) {
-    console.error("Error finding saved node details:", error);
-    throw new Error("Failed to find saved node details");
+    console.error("Error in findSavedNodeDetails:", error);
+    return null;
   }
 };
 
 export const getTotalRoadmapsGenerated = async () => {
-  const totalRoadmaps = await db.roadmap.count();
-  return totalRoadmaps;
+  try {
+    const count = await db.roadmap.count();
+    return count;
+  } catch (error) {
+    console.error("Error in getTotalRoadmapsGenerated:", error);
+    return 0;
+  }
 };

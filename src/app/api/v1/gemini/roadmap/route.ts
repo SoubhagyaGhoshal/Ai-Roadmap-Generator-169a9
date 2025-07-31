@@ -20,36 +20,34 @@ export const POST = async (req: NextRequest, res: Response) => {
     if (!query) {
       return NextResponse.json(
         { status: false, message: "Please send query." },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (!apiKey && !process.env.GEMINI_API_KEY) {
       return NextResponse.json(
         { status: false, message: "Please provide API key." },
-        { status: 400 }
+        { status: 400 },
       );
     }
-    const normalizedQuery = query.replace(/\s+/g, "").toLowerCase();
+    
+    // Use exact matching instead of substring matching to prevent "java" from matching "javascript"
+    const normalizedQuery = query.trim().toLowerCase();
 
-    const roadmaps = await db.roadmap.findMany({
+    const alreadyExists = await db.roadmap.findFirst({
       where: {
         title: {
-          mode: "insensitive", // This line is optional and depends on your database
-          contains: normalizedQuery,
+          mode: "insensitive",
+          equals: normalizedQuery,
         },
       },
     });
-    const alreadyExists = roadmaps.find(
-      (roadmap) =>
-        roadmap.title.replace(/\s+/g, "").toLowerCase() === normalizedQuery
-    );
 
     if (alreadyExists) {
-      await incrementRoadmapSearchCount(alreadyExists.id); // does not return roadmapID to redirect
+      await incrementRoadmapSearchCount(alreadyExists.id);
       const tree = JSON.parse(alreadyExists.content);
       return NextResponse.json(
         { status: true, tree, roadmapId: alreadyExists.id },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
@@ -68,11 +66,11 @@ export const POST = async (req: NextRequest, res: Response) => {
     const response = await model.invoke([
       [
         "system",
-        "You are a helpful AI assistant that can generate career/syllabus roadmaps. You can arrange it in a way so that the order of the chapters is always from beginner to advanced. Always generate a minimum of 4 modules inside a chapter and a link to wikipedia if possible",
+        "You are a helpful AI assistant that can generate career/syllabus roadmaps. You can arrange it in a way so that the order of the chapters is always from beginner to advanced. Always generate a minimum of 4 modules inside a chapter and a link to wikipedia if possible. IMPORTANT: Use the exact query term provided by the user - do not substitute or interpret it differently.",
       ],
       [
         "human",
-        `Generate a roadmap in JSON format related to the title: ${query} which has the JSON structure: {query: ${query}, chapters: {chapterName: [{moduleName: string, moduleDescription: string, link?: string}]}} not in mardown format containing backticks. IMPORTANT: REFRAIN FROM ANSWERING ANY NSFW/DESTRUCTIVE/PROFANITY QUERY.`,
+        `Generate a roadmap in JSON format related to the title: ${query} which has the JSON structure: {query: ${query}, chapters: {chapterName: [{moduleName: string, moduleDescription: string, link?: string}]}} not in mardown format containing backticks. Use "${query}" exactly as provided - do not change or interpret the query term. IMPORTANT: REFRAIN FROM ANSWERING ANY NSFW/DESTRUCTIVE/PROFANITY QUERY.`,
       ],
     ]);
     if (!apiKey) {
@@ -84,7 +82,7 @@ export const POST = async (req: NextRequest, res: Response) => {
               status: true,
               message: "No credits remaining ",
             },
-            { status: 400 }
+            { status: 400 },
           );
         }
       } catch (e) {
@@ -95,7 +93,7 @@ export const POST = async (req: NextRequest, res: Response) => {
             status: false,
             message: "An error occurred while managing credits.",
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -110,9 +108,17 @@ export const POST = async (req: NextRequest, res: Response) => {
             message:
               "An unexpected error occurred while generating roadmap. Please try again or use a different keyword/query.",
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
+      
+      // Verify that the query in the response matches the original query
+      if (json.query !== query) {
+        console.log(`Query mismatch: original="${query}", response="${json.query}"`);
+        // Force the correct query
+        json.query = query;
+      }
+      
       const tree = [
         {
           name: capitalize(json.query),
@@ -131,7 +137,7 @@ export const POST = async (req: NextRequest, res: Response) => {
       const { data } = await saveRoadmap(query, tree);
       return NextResponse.json(
         { status: true, text: json, tree, roadmapId: data?.id },
-        { status: 200 }
+        { status: 200 },
       );
     } catch (e) {
       console.log(e);
@@ -141,7 +147,7 @@ export const POST = async (req: NextRequest, res: Response) => {
           message:
             "An unexpected error occurred while generating roadmap. Please try again or use a different keyword/query.",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   } catch (e) {
@@ -152,7 +158,7 @@ export const POST = async (req: NextRequest, res: Response) => {
         message:
           "An unexpected error occurred while generating roadmap. Please try again or use a different keyword/query.",
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 };

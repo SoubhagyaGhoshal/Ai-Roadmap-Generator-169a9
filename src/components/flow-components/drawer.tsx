@@ -57,17 +57,15 @@ export const Drawer = ({ roadmapId }: DrawerProps) => {
         );
 
         if (existingDetails) {
-          const { youtubeVideoIds, details, books } = existingDetails;
+          const { youtubeVideoIds, details } = existingDetails;
 
           setDrawerData({
             detailsData: JSON.parse(details),
             videoIds: youtubeVideoIds as string[],
-            booksData: JSON.parse(books),
             isSuccess: true,
           });
         } else {
-          const { detailsData, videoIds, booksData } =
-            await fetchDataFromAPIs();
+          const { detailsData, videoIds } = await fetchDataFromAPIs();
 
           const shouldSaveNodeDetails =
             roadmapId &&
@@ -82,7 +80,6 @@ export const Drawer = ({ roadmapId }: DrawerProps) => {
               roadmapId,
               nodeName,
               JSON.stringify(detailsData),
-              JSON.stringify(booksData),
               videoIds,
             );
           }
@@ -90,7 +87,6 @@ export const Drawer = ({ roadmapId }: DrawerProps) => {
           setDrawerData({
             detailsData,
             videoIds: videoIds as string[],
-            booksData: booksData,
             isSuccess: true,
           });
         }
@@ -121,9 +117,8 @@ export const Drawer = ({ roadmapId }: DrawerProps) => {
     const videoIds = await searchYoutube(
       `${drawerDetails?.query} ${drawerDetails?.parent} ${drawerDetails?.child}`,
     );
-    const booksData = await fetchBooksData();
 
-    return { detailsData, videoIds, booksData };
+    return { detailsData, videoIds };
   };
 
   const fetchDetailsData = async () => {
@@ -139,18 +134,6 @@ export const Drawer = ({ roadmapId }: DrawerProps) => {
       return response.data.text;
     } catch (error) {
       console.error("Error fetching details data:", error);
-      return null;
-    }
-  };
-
-  const fetchBooksData = async () => {
-    try {
-      const response = await axios.post(`/api/v1/orilley`, {
-        data: { query: drawerDetails?.child },
-      });
-      return response.data.data.results;
-    } catch (error) {
-      console.error("Error fetching books data:", error);
       return null;
     }
   };
@@ -251,44 +234,6 @@ export const Drawer = ({ roadmapId }: DrawerProps) => {
                   </ul>
                 </div>
               ) : null}
-              <div className="mt-4">
-                <p className="text-black mb-2">Recommended Books</p>
-                <div className="flex flex-col gap-3">
-                  {drawerData?.booksData?.length > 0 &&
-                    drawerData?.booksData?.map(
-                      (book: IOrilley["data"][number], id: number) => (
-                        <a
-                          className="flex items-start bg-white rounded-md overflow-hidden cursor-pointer"
-                          href={"https://learning.oreilly.com" + book?.web_url}
-                          target="_blank"
-                          key={book?.id}
-                        >
-                          <div className="w-[80px] h-[80px] flex-shrink-0">
-                            <img
-                              className="w-full h-full object-cover"
-                              src={book?.cover_url ?? ""}
-                              alt={book?.title ?? ""}
-                            />
-                          </div>
-                          <div className="px-4">
-                            <p className="text-base font-regular mb-1">
-                              {book?.title ?? ""}
-                            </p>
-                            <p className="text-gray-700 text-sm">
-                              By {book?.authors?.[0] ?? ""}
-                            </p>
-                            {book?.duration_seconds > 0 && (
-                              <p className="text-gray-600 text-xs">
-                                Complete in{" "}
-                                {formatDuration(book?.duration_seconds)}
-                              </p>
-                            )}
-                          </div>
-                        </a>
-                      ),
-                    )}
-                </div>
-              </div>
             </div>
           )}
         </div>

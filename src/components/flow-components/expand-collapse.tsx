@@ -24,7 +24,7 @@ function ExpandCollapse(props: Props) {
     );
 
   // Check if data exists and has at least one item
-  if (!data || data.length === 0 || !data[0]) {
+  if (!data || data.length === 0 || !data[0] || !data[0].children) {
     return (
       <div className="w-full h-[86vh] flex justify-center items-center">
         <p className="text-gray-500">No data available</p>

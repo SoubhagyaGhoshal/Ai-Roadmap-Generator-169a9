@@ -49,7 +49,6 @@ model DrawerDetail {
   id              String   @id @default(cuid())
   details         String
   youtubeVideoIds String[]
-  books           String
   nodeName        String   @unique
   roadmapId       String
   roadmap         Roadmap  @relation(fields: [roadmapId], references: [id], onDelete: Cascade)

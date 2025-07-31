@@ -36,21 +36,17 @@ export const POST = async (req: NextRequest) => {
       );
     }
 
-    const normalizedQuery = query.replace(/\s+/g, "").toLowerCase();
+    // Use exact matching instead of substring matching to prevent "java" from matching "javascript"
+    const normalizedQuery = query.trim().toLowerCase();
 
-    const roadmaps = await db.roadmap.findMany({
+    const alreadyExists = await db.roadmap.findFirst({
       where: {
         title: {
           mode: "insensitive",
-          contains: normalizedQuery,
+          equals: normalizedQuery,
         },
       },
     });
-
-    const alreadyExists = roadmaps.find(
-      (roadmap) =>
-        roadmap.title.replace(/\s+/g, "").toLowerCase() === normalizedQuery,
-    );
 
     if (alreadyExists) {
       await incrementRoadmapSearchCount(alreadyExists.id);
@@ -69,7 +65,7 @@ export const POST = async (req: NextRequest) => {
     const prompt = ChatPromptTemplate.fromMessages([
       [
         "ai",
-        `You are a helpful AI assistant that can generate career/syllabus roadmaps. You can arrange it in a way so that the order of the chapters is always from beginner to advanced. Always generate a minimum of 4 modules inside a chapter. IMPORTANT: REFRAIN FROM ANSWERING ANY NSFW/DESTRUCTIVE/PROFANITY QUERY.
+        `You are a helpful AI assistant that can generate career/syllabus roadmaps. You can arrange it in a way so that the order of the chapters is always from beginner to advanced. Always generate a minimum of 4 modules inside a chapter. IMPORTANT: REFRAIN FROM ANSWERING ANY NSFW/DESTRUCTIVE/PROFANITY QUERY. IMPORTANT: Use the exact query term provided by the user - do not substitute or interpret it differently.
         `,
       ],
       ["human", "{input}"],
@@ -77,7 +73,7 @@ export const POST = async (req: NextRequest) => {
 
     const chain = prompt.pipe(model);
     const response = await chain.invoke({
-      input: `Generate a roadmap in JSON format related to the title: ${query} which has the JSON structure: {query: ${query}, chapters: {chapterName: string[]}}.`,
+      input: `Generate a roadmap in JSON format related to the title: ${query} which has the JSON structure: {query: ${query}, chapters: {chapterName: string[]}}. Use "${query}" exactly as provided - do not change or interpret the query term.`,
     });
 
     let json: { query: string; chapters: { [key: string]: string[] } } | null =
@@ -119,6 +115,13 @@ export const POST = async (req: NextRequest) => {
           },
           { status: 500 },
         );
+      }
+      
+      // Verify that the query in the response matches the original query
+      if (json.query !== query) {
+        console.log(`Query mismatch: original="${query}", response="${json.query}"`);
+        // Force the correct query
+        json.query = query;
       }
 
       const tree: Node[] = [

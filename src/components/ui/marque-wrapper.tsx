@@ -66,7 +66,7 @@ const secondRow = roadmaps.slice(roadmaps.length / 2);
 
 const ReviewCard = ({ title, views, time, id }: Roadmap) => {
   return (
-    <Link href="/roadmap" prefetch={false}>
+    <Link href={`/roadmap?topic=${encodeURIComponent(title)}`} prefetch={false}>
       <figure
         className={cn(
           "relative w-48 sm:w-64 cursor-pointer overflow-hidden rounded border-2 border-[#000000a6] p-2 shadow-[6px_6px_0px_1px_#000000a6] flex flex-col justify-between h-20 hover:shadow-[8px_8px_0px_1px_#000000a6] transition-all"

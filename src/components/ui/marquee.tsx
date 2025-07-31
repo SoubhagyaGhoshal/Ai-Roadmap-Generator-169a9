@@ -20,12 +20,11 @@ export default function Marquee({
   repeat = 4,
   ...props
 }: MarqueeProps) {
-  const id = "clupj7xzw000114c5pzzj8b1t";
   return (
     <div
       {...props}
       className={cn(
-        "group flex overflow-hidden p-2 [--duration:4clupj7xzw000114c5pzzj8b1ts] [--gap:1rem] [gap:var(--gap)]",
+        "group flex overflow-hidden p-2 [--duration:40s] [--gap:1rem] [gap:var(--gap)]",
         {
           "flex-row": !vertical,
           "flex-col": vertical,
