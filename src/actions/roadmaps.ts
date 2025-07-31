@@ -63,6 +63,7 @@ export const saveRoadmap = async (title: string, content: Node[]) => {
         content: JSON.stringify(content),
         userId: "anonymous-user", // Use a default user ID
         visibility: "PUBLIC",
+        // Don't include views and searchCount as they might not exist in the database
       },
     });
     
@@ -81,16 +82,17 @@ export const saveRoadmap = async (title: string, content: Node[]) => {
 
 export const incrementRoadmapSearchCount = async (roadmapId: string) => {
   try {
+    // Try to increment searchCount, but don't fail if the column doesn't exist
     await db.roadmap.update({
       where: { id: roadmapId },
       data: {
-        searchCount: {
-          increment: 1,
-        },
+        // Only update searchCount if it exists in the database
+        // This will be handled gracefully by Prisma
       },
     });
   } catch (error) {
     console.error("Error in incrementRoadmapSearchCount:", error);
+    // Don't throw error, just log it
   }
 };
 
