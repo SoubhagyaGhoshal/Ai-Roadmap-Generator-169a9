@@ -62,6 +62,17 @@ export default function Roadmap({ roadmapId }: Props) {
     "",
   );
 
+  // Auto-generate roadmap when query is set from URL
+  useEffect(() => {
+    const topic = params.get('topic');
+    if (topic && query === topic && !isPending && !data) {
+      // Auto-trigger generation for URL topics
+      mutate({
+        body: { query: topic },
+      });
+    }
+  }, [params, query, isPending, data, mutate]);
+
   // Remove auto-generation - let users choose their own topics
   const roadmapData = roadmap?.content || data?.tree || decodeFromURL(params);
   const renderFlow = roadmapData?.[0]?.name || "";
