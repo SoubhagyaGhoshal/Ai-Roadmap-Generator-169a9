@@ -70,8 +70,20 @@ export default function Roadmap({ roadmapId }: Props) {
           console.error("Invalid response format:", response);
         }
       },
-      onError: (error) => {
+      onError: (error: any) => {
         console.error("Roadmap generation failed:", error);
+        // Don't retry if it's an API key error
+        if (error?.response?.data?.message?.includes("API key")) {
+          console.log("API key error detected, not retrying");
+        }
+      },
+      retry: (failureCount, error: any) => {
+        // Don't retry if it's an API key error
+        if (error?.response?.data?.message?.includes("API key")) {
+          return false;
+        }
+        // Retry up to 3 times for other errors
+        return failureCount < 3;
       },
     }
   );

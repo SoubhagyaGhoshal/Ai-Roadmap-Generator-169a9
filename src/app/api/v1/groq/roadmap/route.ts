@@ -17,10 +17,15 @@ export const POST = async (req: NextRequest) => {
     const body = await req.json();
     const query = body.query;
 
+    // Debug logging
+    console.log("API Key from params:", apiKey ? "provided" : "not provided");
+    console.log("Environment GROQ_API_KEY:", process.env.GROQ_API_KEY ? "available" : "not available");
+
     // Check if we have an API key (either from user or environment)
     const groqApiKey = apiKey || process.env.GROQ_API_KEY;
     
     if (!groqApiKey) {
+      console.error("No API key available - neither from params nor environment");
       return NextResponse.json(
         { 
           status: false, 
@@ -29,6 +34,8 @@ export const POST = async (req: NextRequest) => {
         { status: 400 },
       );
     }
+
+    console.log("Using API key:", groqApiKey ? "available" : "not available");
 
     const openai = new OpenAI({
       apiKey: groqApiKey,
