@@ -1,10 +1,11 @@
 [build]
-  command = "chmod +x ./build.sh && ./build.sh"
+  command = "npm ci --legacy-peer-deps && npm run build"
   publish = ".next"
 
 [build.environment]
   NODE_VERSION = "18"
   NPM_VERSION = "10"
+  NPM_FLAGS = "--legacy-peer-deps"
 
 [[redirects]]
   from = "/*"
