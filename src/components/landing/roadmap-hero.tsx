@@ -5,6 +5,7 @@ import { clerkClient } from "@clerk/nextjs";
 import { Telescope, Wand } from "lucide-react";
 import Link from "next/link";
 import { Link as LinkWithViewTransitions } from "next-view-transitions";
+import Image from "next/image";
 import NeobrutalismButton from "@/components/ui/neobrutalism-button";
 import TextTicker from "@/components/marketing/text-ticker";
 import { getTotalRoadmapsGenerated } from "@/actions/roadmaps";
@@ -27,11 +28,13 @@ async function UserAvatars() {
     <>
       <div className="isolate flex -space-x-2 overflow-hidden">
         {users.map((user) => (
-          <img
+          <Image
             key={user.id}
             className="relative z-30 inline-block h-8 w-8 rounded-full ring-2 ring-white"
             src={user.imageUrl}
             alt=""
+            width={32}
+            height={32}
           />
         ))}
       </div>

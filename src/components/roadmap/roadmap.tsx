@@ -115,7 +115,7 @@ export default function Roadmap({ roadmapId }: Props) {
       // Make the API call directly
       generateRoadmap(topic);
     }
-  }, [params, isGenerating, generatedData, setQuery, hasTriggeredGeneration, model, modelApiKey]);
+  }, [params, isGenerating, generatedData, setQuery, hasTriggeredGeneration, model, modelApiKey, generateRoadmap, query]);
 
   // Component mount test
   useEffect(() => {
@@ -123,7 +123,7 @@ export default function Roadmap({ roadmapId }: Props) {
     console.log("🎯 Initial params:", params.toString());
     console.log("🎯 Initial query:", query);
     console.log("🎯 Initial model:", model);
-  }, []);
+  }, [params, query, model]);
 
   // Reset trigger flag when topic changes
   useEffect(() => {
@@ -298,7 +298,7 @@ export default function Roadmap({ roadmapId }: Props) {
                           }}
                           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         >
-                          Generate Roadmap for "{params.get('topic')}"
+                          Generate Roadmap for &quot;{params.get('topic')}&quot;
                         </button>
                       </div>
                     )}

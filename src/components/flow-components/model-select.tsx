@@ -29,7 +29,7 @@ const ModelSelect = ({ disabled }: ModalSelectProps) => {
     if (exist && modelKey) {
       setModel(modelKey as UModel);
     }
-  }, []);
+  }, [setModel]);
 
   useEffect(() => {
     localStorage.setItem("model", model);

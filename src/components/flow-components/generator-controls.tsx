@@ -403,7 +403,7 @@ export const GeneratorControls = (props: Props) => {
     if (roadmapId) {
       router.push(`/roadmap/${roadmapId}`);
     }
-  }, [model, dbRoadmapId, roadmapId]);
+  }, [model, dbRoadmapId, roadmapId, router]);
 
   const onSubmit = async () => {
     let currentQuery = query.trim();
