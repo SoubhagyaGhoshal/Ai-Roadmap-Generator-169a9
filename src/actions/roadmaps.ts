@@ -82,14 +82,9 @@ export const saveRoadmap = async (title: string, content: Node[]) => {
 
 export const incrementRoadmapSearchCount = async (roadmapId: string) => {
   try {
-    // Try to increment searchCount, but don't fail if the column doesn't exist
-    await db.roadmap.update({
-      where: { id: roadmapId },
-      data: {
-        // Only update searchCount if it exists in the database
-        // This will be handled gracefully by Prisma
-      },
-    });
+    // This function is now a no-op since we removed searchCount from the schema
+    // We'll just log that it was called but not actually increment anything
+    console.log(`Search count increment requested for roadmap ${roadmapId} (no-op)`);
   } catch (error) {
     console.error("Error in incrementRoadmapSearchCount:", error);
     // Don't throw error, just log it
@@ -365,6 +360,6 @@ export const getTotalRoadmapsGenerated = async () => {
     return count;
   } catch (error) {
     console.error("Error in getTotalRoadmapsGenerated:", error);
-    return 0;
+    return 0; // Return 0 if there's an error
   }
 };
