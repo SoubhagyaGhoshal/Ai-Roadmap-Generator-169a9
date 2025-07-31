@@ -103,19 +103,88 @@ export default function Roadmap({ roadmapId }: Props) {
     console.log("  - Is generating:", isGenerating);
     console.log("  - Has generated data:", !!generatedData);
     console.log("  - Has triggered generation:", hasTriggeredGeneration);
+    console.log("  - Model:", model);
+    console.log("  - Model API Key:", modelApiKey ? "SET" : "NOT SET");
     
     // If we have a topic and haven't triggered generation yet, do it now
     if (topic && !hasTriggeredGeneration && !isGenerating && !generatedData) {
       console.log("🚀 Triggering generation for topic:", topic);
       setHasTriggeredGeneration(true);
-      
-      // Set the query first
       setQuery(topic);
       
       // Make the API call directly
-      generateRoadmap(topic);
+      const makeApiCall = async () => {
+        console.log("🚀 Starting direct API call for:", topic);
+        setIsGenerating(true);
+        setGenerationError(null);
+        setTimeoutError(false);
+        
+        try {
+          const apiKeyParam = modelApiKey && modelApiKey.trim() !== "" ? `?apiKey=${modelApiKey}` : "";
+          const url = `/api/v1/${model}/roadmap${apiKeyParam}`;
+          
+          console.log("📡 Making API call to:", url);
+          console.log("📡 Request body:", { query: topic });
+          
+          const response = await axios.post(url, { query: topic }, {
+            timeout: 30000,
+          });
+          
+          console.log("✅ API call successful:", response.data);
+          setGeneratedData(response.data);
+          setIsGenerating(false);
+        } catch (error) {
+          console.error("❌ API call failed:", error);
+          setGenerationError(error);
+          setIsGenerating(false);
+          setTimeoutError(true);
+        }
+      };
+      
+      // Call immediately
+      makeApiCall();
     }
-  }, [params, isGenerating, generatedData, setQuery, hasTriggeredGeneration, model, modelApiKey, generateRoadmap, query]);
+  }, [params]);
+
+  // Fallback auto-generation with timeout
+  useEffect(() => {
+    const topic = params.get('topic');
+    if (topic && !generatedData && !isGenerating) {
+      const timeoutId = setTimeout(() => {
+        if (!hasTriggeredGeneration && !generatedData) {
+          console.log("⏰ Fallback auto-generation triggered for:", topic);
+          setHasTriggeredGeneration(true);
+          setQuery(topic);
+          
+          const makeApiCall = async () => {
+            setIsGenerating(true);
+            setGenerationError(null);
+            setTimeoutError(false);
+            
+            try {
+              const apiKeyParam = modelApiKey && modelApiKey.trim() !== "" ? `?apiKey=${modelApiKey}` : "";
+              const url = `/api/v1/${model}/roadmap${apiKeyParam}`;
+              
+              const response = await axios.post(url, { query: topic }, {
+                timeout: 30000,
+              });
+              
+              setGeneratedData(response.data);
+              setIsGenerating(false);
+            } catch (error) {
+              setGenerationError(error);
+              setIsGenerating(false);
+              setTimeoutError(true);
+            }
+          };
+          
+          makeApiCall();
+        }
+      }, 2000); // 2 second fallback
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [params, generatedData, isGenerating, hasTriggeredGeneration, model, modelApiKey, setQuery]);
 
   // Component mount test
   useEffect(() => {
@@ -123,7 +192,17 @@ export default function Roadmap({ roadmapId }: Props) {
     console.log("🎯 Initial params:", params.toString());
     console.log("🎯 Initial query:", query);
     console.log("🎯 Initial model:", model);
-  }, [params, query, model]);
+    console.log("🎯 Initial modelApiKey:", modelApiKey ? "SET" : "NOT SET");
+    console.log("🎯 Initial hasTriggeredGeneration:", hasTriggeredGeneration);
+    console.log("🎯 Initial generatedData:", !!generatedData);
+    console.log("🎯 Initial isGenerating:", isGenerating);
+    
+    // Simple test alert
+    const topic = params.get('topic');
+    if (topic) {
+      alert(`Component mounted with topic: ${topic}`);
+    }
+  }, [params, query, model, modelApiKey, hasTriggeredGeneration, generatedData, isGenerating]);
 
   // Reset trigger flag when topic changes
   useEffect(() => {
@@ -163,7 +242,7 @@ export default function Roadmap({ roadmapId }: Props) {
     };
   }, [isGenerating]);
 
-  const roadmapData = roadmap?.content || generatedData?.tree || decodeFromURL(params);
+  const roadmapData = roadmap?.content || generatedData?.tree || generatedData?.text?.tree || decodeFromURL(params);
   const renderFlow = roadmapData?.[0]?.name || "";
 
   // Debug logging
