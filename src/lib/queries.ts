@@ -26,9 +26,12 @@ export const useGenerateRoadmap = (
   modelApiKey: string | null,
   options?: MutationOptions,
 ) => {
+  // Only include apiKey parameter if it's provided
+  const apiKeyParam = modelApiKey && modelApiKey.trim() !== "" ? `?apiKey=${modelApiKey}` : "";
+  
   return MutationFactory(
     ["Generate Roadmap", query],
-    `/api/v1/${model}/roadmap?apiKey=${modelApiKey}`,
+    `/api/v1/${model}/roadmap${apiKeyParam}`,
     "POST",
     options,
   );
