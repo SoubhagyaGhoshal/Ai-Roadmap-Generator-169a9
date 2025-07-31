@@ -7,6 +7,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "netlify:build": "pnpm build",
+    "netlify:dev": "pnpm dev",
     "db:studio": "pnpx prisma studio",
     "db:generate": "pnpx prisma generate",
     "db:migrate": "pnpx prisma migrate dev",
