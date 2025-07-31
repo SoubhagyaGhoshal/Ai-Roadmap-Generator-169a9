@@ -13,19 +13,49 @@
   
   ### 🎯 **Generate personalized learning roadmaps for any topic with AI**
   
-  [Live Demo](https://ai-roadmap-generator.vercel.app) • [Report Bug](https://github.com/SoubhagyaGhoshal/Ai-Roadmap-Generator/issues) • [Request Feature](https://github.com/SoubhagyaGhoshal/Ai-Roadmap-Generator/issues)
+  [🚀 Deploy Now](https://vercel.com/new/clone?repository-url=https://github.com/SoubhagyaGhoshal/Ai-Roadmap-Generator-169a9) • [Report Bug](https://github.com/SoubhagyaGhoshal/Ai-Roadmap-Generator-169a9/issues) • [Request Feature](https://github.com/SoubhagyaGhoshal/Ai-Roadmap-Generator-169a9/issues)
 </div>
+
+---
+
+## 🆕 **Recent Enhancements** *(v2.0)*
+
+### 🎨 **Enhanced User Interface**
+We've completely redesigned the user experience with modern, professional styling:
+
+- **🔙 Back Button** - Easy navigation from roadmap view back to homepage
+- **🎭 Glass Morphism** - Beautiful backdrop blur effects throughout the app
+- **🌊 Animated Backgrounds** - Floating gradient blobs with smooth animations
+- **📊 Status Indicators** - Real-time feedback (Generating → Ready → Waiting)
+- **⚡ Enhanced Loading** - Multi-step progress indicators with smooth transitions
+- **🎯 Sticky Header** - Professional navigation that stays accessible
+- **✨ Gradient Effects** - Modern typography with beautiful text gradients
+- **📱 Responsive Design** - Optimized for all screen sizes and devices
+
+### 🚀 **Technical Improvements**
+- Enhanced state management for better UI feedback
+- Custom CSS animations for smooth interactions
+- Improved error handling with visual feedback
+- Professional polish matching top-tier applications
+- Production-ready code with comprehensive testing
 
 ---
 
 ## ✨ **Features**
 
-### 🎨 **Modern UI/UX**
+### 🎨 **Modern UI/UX** ✨ *Recently Enhanced*
+- **🔙 Back Button Navigation** - Seamless navigation from roadmap back to homepage
 - **Glass morphism design** with backdrop blur effects
+- **Animated floating blobs** with gradient backgrounds
+- **Sticky header** with status indicators (Generating/Ready/Waiting)
+- **Multi-step progress indicators** during roadmap generation
+- **Enhanced loading states** with beautiful animations
+- **Gradient text effects** and improved typography
 - **Smooth animations** and micro-interactions
 - **Responsive layout** that works on all devices
 - **Dark/light mode** support
 - **Interactive roadmap visualization**
+- **Professional polish** rivaling top-tier applications
 
 ### 🤖 **AI-Powered Generation**
 - **Multiple AI models** support (Groq, OpenAI, Gemini, Cohere)
