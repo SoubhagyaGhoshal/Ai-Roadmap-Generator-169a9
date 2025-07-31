@@ -251,21 +251,24 @@ export const GeneratorControls = (props: Props) => {
   const disableUI = isGenerating || isPending;
 
   return (
-    <div className="container flex flex-col items-start justify-between space-y-2 py-4 sm:flex-row sm:items-center sm:space-y-0 md:h-16">
-      <div className="md:mx-14 flex w-full space-x-2 sm:justify-end">
+    <div className="container flex flex-col items-start justify-between space-y-4 py-6 sm:flex-row sm:items-center sm:space-y-0">
+      <div className="flex w-full flex-col space-y-4 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
         {!dbRoadmapId && (
-          <Input
-            type="text"
-            disabled={disableUI}
-            placeholder="e.g. Try searching for Frontend or Backend"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                onSubmit(e);
-              }
-            }}
-          />
+          <div className="flex-1">
+            <Input
+              type="text"
+              disabled={disableUI}
+              placeholder="Enter a topic (e.g., React, Python, Machine Learning)"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  onSubmit(e);
+                }
+              }}
+              className="h-12 text-lg"
+            />
+          </div>
         )}
 
         {dbRoadmapId && (
@@ -276,11 +279,19 @@ export const GeneratorControls = (props: Props) => {
           </div>
         )}
 
+        {!dbRoadmapId && (
+          <div className="flex items-center space-x-2">
+            <ModelSelect disabled={disableUI} />
+            <GenerateButton onClick={onSubmit} disabled={disableUI} />
+            <ApiKeyDialog disabled={disableUI} />
+          </div>
+        )}
+
         {isAuthor && (
           <Button
             variant="outline"
             size="icon"
-            className="mx-2 cursor-pointer"
+            className="cursor-pointer"
             onClick={handleDelete}
           >
             <Trash className="cursor-pointer" size="16px" />
@@ -304,7 +315,7 @@ export const GeneratorControls = (props: Props) => {
 
         {showVisibilityDropdown && (
           <Select onValueChange={onValueChange} value={visibility}>
-            <SelectTrigger className="md:w-[140px] w-fit">
+            <SelectTrigger className="w-[140px]">
               <SelectValue placeholder={formatVisibility(initialVisibility)} />
             </SelectTrigger>
             <SelectContent>
@@ -313,18 +324,6 @@ export const GeneratorControls = (props: Props) => {
             </SelectContent>
           </Select>
         )}
-
-        {!dbRoadmapId && (
-          <div className="">
-            <ModelSelect disabled={disableUI} />
-          </div>
-        )}
-
-        {!dbRoadmapId && (
-          <GenerateButton onClick={onSubmit} disabled={disableUI} />
-        )}
-
-        {!dbRoadmapId && <ApiKeyDialog disabled={disableUI} />}
 
         {renderFlow && dbRoadmapId && (
           <div className="flex space-x-2">

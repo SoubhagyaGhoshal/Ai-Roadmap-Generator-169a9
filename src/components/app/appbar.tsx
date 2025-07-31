@@ -39,17 +39,19 @@ async function AppBar() {
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-        <div className="p-2 flex gap-2 items-center">
-          <Link href="/">
-            <NeobrutalismButton>
-              <span className="font-bold text-lg">RoadmapAI</span>
-            </NeobrutalismButton>
-          </Link>
-          <div className="ml-auto items-center">
-            <NeobrutalismButton>
-              <SignInButton />
-            </NeobrutalismButton>
+      <div className="border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <Link href="/" className="flex items-center space-x-2">
+              <span className="text-xl font-bold text-gray-900">RoadmapAI</span>
+            </Link>
+            <div className="flex items-center space-x-4">
+              <SignInButton mode="modal">
+                <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                  Sign In
+                </button>
+              </SignInButton>
+            </div>
           </div>
         </div>
       </div>
@@ -57,43 +59,37 @@ async function AppBar() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-      <div className="p-2 flex gap-2 items-center">
-        <span className="md:hidden ml-2">
-          <MobileDrawer />
-        </span>
-        <Link href="/">
-          <NeobrutalismButton>
-            <span className="font-semibold text-lg">RoadmapAI</span>
-          </NeobrutalismButton>
-        </Link>
-        <NavItems />
-        <div className="ml-auto flex items-center">
-          <div className="flex gap-2 items-center">
-            <div className="gap-2">
-              <TooltipProvider>
-                <Tooltip delayDuration={250}>
-                  <TooltipTrigger asChild>
-                    <Badge
-                      className="cursor-default"
-                      variant={
-                        userCredits && userCredits > 0
-                          ? "outline"
-                          : "destructive"
-                      }
-                    >
-                      {userCredits} <Coins size={16} />
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>Credits Remaining</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+    <div className="border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          <div className="flex items-center space-x-8">
+            <Link href="/" className="flex items-center space-x-2">
+              <span className="text-xl font-bold text-gray-900">RoadmapAI</span>
+            </Link>
+            <NavItems />
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <TooltipProvider>
+              <Tooltip delayDuration={250}>
+                <TooltipTrigger asChild>
+                  <Badge
+                    className="cursor-default"
+                    variant={
+                      userCredits && userCredits > 0
+                        ? "outline"
+                        : "destructive"
+                    }
+                  >
+                    {userCredits} <Coins size={14} />
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>Credits Remaining</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <UserButton afterSignOutUrl="/" />
           </div>
         </div>
-        <span>
-          <UserButton afterSignOutUrl="/" />
-        </span>
       </div>
     </div>
   );

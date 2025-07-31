@@ -86,14 +86,30 @@ export default function Roadmap({ roadmapId }: Props) {
             />
           ) : (
             <div className="min-h-[75vh] flex items-center justify-center bg-gray-50">
-              <div className="text-center">
-                <h2 className="text-2xl font-bold mb-4">Generate Your Learning Roadmap</h2>
-                <p className="text-gray-600 mb-6">Enter a topic above and click generate to create your learning roadmap</p>
-                <div className="flex justify-center">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md">
-                    <p className="text-blue-800 text-sm">
-                      <strong>Tip:</strong> Add your API key using the &quot;Add Key&quot; button to generate unlimited roadmaps.
-                    </p>
+              <div className="text-center max-w-md mx-auto">
+                <div className="mb-8">
+                  <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                    AI Roadmap Generator
+                  </h1>
+                  <p className="text-lg text-gray-600">
+                    Generate personalized learning roadmaps for any topic
+                  </p>
+                </div>
+                
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <p className="text-sm text-gray-600">
+                        Enter a topic above and click generate to create your learning roadmap
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <p className="text-sm text-gray-600">
+                        Add your API key using the &quot;Add Key&quot; button to generate unlimited roadmaps
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
