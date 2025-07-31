@@ -23,7 +23,7 @@ interface Props {
 const ApiKeyDialog = ({ disabled }: Props) => {
   const [apiKey, setApiKey] = useState("");
 
-  const { setModelApiKey, model, setModel } = useUIStore((state) => ({
+  const { setModelApiKey, modelApiKey, model, setModel } = useUIStore((state) => ({
     setModelApiKey: state.setModelApiKey,
     modelApiKey: state.modelApiKey,
     model: state.model,
@@ -58,16 +58,20 @@ const ApiKeyDialog = ({ disabled }: Props) => {
     const geminiKey = localStorage.getItem("GEMINI_API_KEY");
     const cohereKey = localStorage.getItem("COHERE_API_KEY");
 
+    let currentApiKey = "";
     if (model === "groq") {
-      setApiKey(groqKey || "");
+      currentApiKey = groqKey || "";
     } else if (model === "openai") {
-      setApiKey(openAIKey || "");
+      currentApiKey = openAIKey || "";
     } else if (model === "gemini") {
-      setApiKey(geminiKey || "");
+      currentApiKey = geminiKey || "";
     } else if (model === "cohere") {
-      setApiKey(cohereKey || "");
+      currentApiKey = cohereKey || "";
     }
-  }, [model]);
+
+    setApiKey(currentApiKey);
+    setModelApiKey(currentApiKey);
+  }, [model, setModelApiKey]);
 
   const setApiKeys = () => {
     if (model === "groq") {
@@ -131,6 +135,7 @@ const ApiKeyDialog = ({ disabled }: Props) => {
               <Input
                 onChange={(e) => setApiKey(e.target.value)}
                 value={apiKey}
+                placeholder={`Enter your ${model.toUpperCase()} API key`}
               />
             </div>
             <div className="mt-4 flex justify-end space-x-2">

@@ -90,18 +90,23 @@ export const POST = async (req: NextRequest) => {
 
     console.log("Generating roadmap for query:", query);
 
-    const text = await openai.chat.completions.create({
-      model: "llama3-70b-8192",
-      temperature: 0.7,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a helpful AI assistant that generates learning roadmaps. Create structured learning paths from beginner to advanced. Always provide at least 4 modules per chapter. Include Wikipedia links when possible. You must return ONLY valid JSON, no additional text or explanations. IMPORTANT: Use the exact query term provided by the user - do not substitute or interpret it differently.",
-        },
-        {
-          role: "user",
-          content: `Generate a learning roadmap for "${query}" in this exact JSON format. Return ONLY the JSON, no other text. Use "${query}" exactly as provided - do not change or interpret the query term:
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+
+    try {
+      const text = await openai.chat.completions.create({
+        model: "llama3-70b-8192",
+        temperature: 0.7,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a helpful AI assistant that generates learning roadmaps. Create structured learning paths from beginner to advanced. Always provide at least 4 modules per chapter. Include Wikipedia links when possible. You must return ONLY valid JSON, no additional text or explanations. IMPORTANT: Use the exact query term provided by the user - do not substitute or interpret it differently.",
+          },
+          {
+            role: "user",
+            content: `Generate a learning roadmap for "${query}" in this exact JSON format. Return ONLY the JSON, no other text. Use "${query}" exactly as provided - do not change or interpret the query term:
 
 {
   "query": "${query}",
@@ -124,138 +129,154 @@ export const POST = async (req: NextRequest) => {
 }
 
 Generate 3-5 chapters with 4-6 modules each. Return ONLY the JSON object. Use "${query}" exactly as provided.`,
-        },
-      ],
-    });
+          },
+        ],
+      }, {
+        signal: controller.signal
+      });
 
-    console.log("Groq response:", text?.choices?.[0]?.message?.content);
+      clearTimeout(timeoutId);
+      console.log("Groq response:", text?.choices?.[0]?.message?.content);
 
-    // Only check credits if user didn't provide their own API key
-    if (!apiKey) {
-      try {
-        const creditsRemaining = await decrementCreditsByUserId();
-        if (!creditsRemaining) {
+      // Only check credits if user didn't provide their own API key
+      if (!apiKey) {
+        try {
+          const creditsRemaining = await decrementCreditsByUserId();
+          if (!creditsRemaining) {
+            return NextResponse.json(
+              {
+                status: true,
+                message: "No credits remaining",
+              },
+              { status: 400 },
+            );
+          }
+        } catch (e) {
+          await incrementUserCredits();
+          console.log(e);
           return NextResponse.json(
             {
-              status: true,
-              message: "No credits remaining",
+              status: false,
+              message: "An error occurred while managing credits.",
             },
-            { status: 400 },
+            { status: 500 },
           );
         }
-      } catch (e) {
-        await incrementUserCredits();
-        console.log(e);
-        return NextResponse.json(
-          {
-            status: false,
-            message: "An error occurred while managing credits.",
-          },
-          { status: 500 },
-        );
-      }
-    }
-
-    let json: JSONType | null = null;
-
-    try {
-      const responseContent = text?.choices?.[0]?.message?.content;
-      console.log("Response content:", responseContent);
-      
-      if (!responseContent) {
-        return NextResponse.json(
-          {
-            status: false,
-            message: "No response content from AI model",
-          },
-          { status: 500 },
-        );
       }
 
-      // Try to extract JSON from the response
-      let jsonString = responseContent.trim();
-      
-      // If the response contains markdown code blocks, extract the JSON
-      if (jsonString.includes("```json")) {
-        jsonString = jsonString.split("```json")[1]?.split("```")[0] || jsonString;
-      } else if (jsonString.includes("```")) {
-        jsonString = jsonString.split("```")[1]?.split("```")[0] || jsonString;
-      }
-      
-      jsonString = jsonString.trim();
-      
-      json = JSON.parse(jsonString);
-      console.log("Parsed JSON:", json);
-      
-      if (!json) {
-        return NextResponse.json(
-          {
-            status: false,
-            message: "Invalid JSON response from AI model",
-          },
-          { status: 500 },
-        );
-      }
-      
-      // Verify that the query in the response matches the original query
-      if (json.query !== query) {
-        console.log(`Query mismatch: original="${query}", response="${json.query}"`);
-        // Force the correct query
-        json.query = query;
-      }
-      
-      if (!json.chapters) {
-        return NextResponse.json(
-          {
-            status: false,
-            message: "Invalid response format from AI model",
-          },
-          { status: 500 },
-        );
-      }
+      let json: JSONType | null = null;
 
-      const tree: Node[] = [
-        {
-          name: capitalize(json.query),
-          children: Object.keys(json.chapters).map((sectionName) => ({
-            name: sectionName,
-            children: json?.chapters?.[sectionName]?.map(
-              ({ moduleName, link, moduleDescription }) => ({
-                name: moduleName,
-                moduleDescription,
-                link,
-              }),
-            ),
-          })),
-        },
-      ];
-
-      console.log("Generated tree:", tree);
-      
-      let savedRoadmap = null;
       try {
-        const { data } = await saveRoadmap(query, tree);
-        savedRoadmap = data;
-      } catch (saveError) {
-        console.error("Error saving roadmap to database:", saveError);
-        // Continue without saving if database is unavailable
+        const responseContent = text?.choices?.[0]?.message?.content;
+        console.log("Response content:", responseContent);
+        
+        if (!responseContent) {
+          return NextResponse.json(
+            {
+              status: false,
+              message: "No response content from AI model",
+            },
+            { status: 500 },
+          );
+        }
+
+        // Try to extract JSON from the response
+        let jsonString = responseContent.trim();
+        
+        // If the response contains markdown code blocks, extract the JSON
+        if (jsonString.includes("```json")) {
+          jsonString = jsonString.split("```json")[1]?.split("```")[0] || jsonString;
+        } else if (jsonString.includes("```")) {
+          jsonString = jsonString.split("```")[1]?.split("```")[0] || jsonString;
+        }
+        
+        jsonString = jsonString.trim();
+        
+        json = JSON.parse(jsonString);
+        console.log("Parsed JSON:", json);
+        
+        if (!json) {
+          return NextResponse.json(
+            {
+              status: false,
+              message: "Invalid JSON response from AI model",
+            },
+            { status: 500 },
+          );
+        }
+        
+        // Verify that the query in the response matches the original query
+        if (json.query !== query) {
+          console.log(`Query mismatch: original="${query}", response="${json.query}"`);
+          // Force the correct query
+          json.query = query;
+        }
+        
+        if (!json.chapters) {
+          return NextResponse.json(
+            {
+              status: false,
+              message: "Invalid response format from AI model",
+            },
+            { status: 500 },
+          );
+        }
+
+        const tree: Node[] = [
+          {
+            name: capitalize(json.query),
+            children: Object.keys(json.chapters).map((sectionName) => ({
+              name: sectionName,
+              children: json?.chapters?.[sectionName]?.map(
+                ({ moduleName, link, moduleDescription }) => ({
+                  name: moduleName,
+                  moduleDescription,
+                  link,
+                }),
+              ),
+            })),
+          },
+        ];
+
+        console.log("Generated tree:", tree);
+        
+        let savedRoadmap = null;
+        try {
+          const { data } = await saveRoadmap(query, tree);
+          savedRoadmap = data;
+        } catch (saveError) {
+          console.error("Error saving roadmap to database:", saveError);
+          // Continue without saving if database is unavailable
+        }
+        
+        return NextResponse.json(
+          { status: true, text: json, tree, roadmapId: savedRoadmap?.id },
+          { status: 200 },
+        );
+      } catch (e) {
+        console.error("Error parsing response:", e);
+        return NextResponse.json(
+          {
+            status: false,
+            message: "An unexpected error occurred while generating roadmap. Please try again or use a different keyword/query.",
+            error: e instanceof Error ? e.message : "Unknown error",
+          },
+          { status: 500 },
+        );
       }
-      
-      return NextResponse.json(
-        { status: true, text: json, tree, roadmapId: savedRoadmap?.id },
-        { status: 200 },
-      );
-    } catch (e) {
-      console.error("Error parsing response:", e);
-      return NextResponse.json(
-        {
-          status: false,
-          message: "An unexpected error occurred while generating roadmap. Please try again or use a different keyword/query.",
-          error: e instanceof Error ? e.message : "Unknown error",
-        },
-        { status: 500 },
-      );
-    }
+         } catch (error) {
+       clearTimeout(timeoutId);
+       if (error instanceof Error && error.name === 'AbortError') {
+         return NextResponse.json(
+           {
+             status: false,
+             message: "Request timed out. Please try again.",
+           },
+           { status: 408 },
+         );
+       }
+       throw error;
+     }
   } catch (e) {
     console.error("Error in roadmap generation:", e);
     return NextResponse.json(
