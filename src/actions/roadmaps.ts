@@ -264,14 +264,9 @@ export const deleteSavedRoadmapById = async (
 
 export const increaseViewsByRoadmapId = async (id: string) => {
   try {
-    await db.roadmap.update({
-      where: { id },
-      data: {
-        views: {
-          increment: 1,
-        },
-      },
-    });
+    // This function is now a no-op since we removed views from the schema
+    // We'll just log that it was called but not actually increment anything
+    console.log(`Views increment requested for roadmap ${id} (no-op)`);
   } catch (error) {
     console.error("Error in increaseViewsByRoadmapId:", error);
   }
