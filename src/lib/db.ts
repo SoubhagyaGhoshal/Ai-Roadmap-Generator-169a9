@@ -16,3 +16,8 @@ export const db =
   });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+
+// Add connection error handling
+db.$connect().catch((error) => {
+  console.error("Database connection error:", error);
+});
