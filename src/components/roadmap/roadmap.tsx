@@ -5,8 +5,8 @@ import ExpandCollapse from "@/components/flow-components/expand-collapse";
 import { Separator } from "@/components/ui/separator";
 import { decodeFromURL } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { Loader2, ArrowLeft, Home, Sparkles, Clock, CheckCircle } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useShallow } from "zustand/react/shallow";
 import { GeneratorControls } from "@/components/flow-components/generator-controls";
 import { useUIStore } from "../../lib/stores/useUI";
@@ -18,6 +18,7 @@ interface Props {
 }
 
 export default function Roadmap({ roadmapId }: Props) {
+  const router = useRouter();
   const { model, query, setQuery, modelApiKey } = useUIStore(
     useShallow((state) => ({
       model: state.model,
@@ -103,19 +104,92 @@ export default function Roadmap({ roadmapId }: Props) {
     console.log("  - Is generating:", isGenerating);
     console.log("  - Has generated data:", !!generatedData);
     console.log("  - Has triggered generation:", hasTriggeredGeneration);
+    console.log("  - Model:", model);
+    console.log("  - Model API Key:", modelApiKey ? "SET" : "NOT SET");
     
     // If we have a topic and haven't triggered generation yet, do it now
     if (topic && !hasTriggeredGeneration && !isGenerating && !generatedData) {
       console.log("🚀 Triggering generation for topic:", topic);
       setHasTriggeredGeneration(true);
-      
-      // Set the query first
       setQuery(topic);
       
       // Make the API call directly
-      generateRoadmap(topic);
+      const makeApiCall = async () => {
+        console.log("🚀 Starting direct API call for:", topic);
+        setIsGenerating(true);
+        setGenerationError(null);
+        setTimeoutError(false);
+        
+        try {
+          const apiKeyParam = modelApiKey && modelApiKey.trim() !== "" ? `?apiKey=${modelApiKey}` : "";
+          const url = `/api/v1/${model}/roadmap${apiKeyParam}`;
+          
+          console.log("📡 Making API call to:", url);
+          console.log("📡 Request body:", { query: topic });
+          
+          const response = await axios.post(url, { query: topic }, {
+            timeout: 30000,
+          });
+          
+          console.log("✅ API call successful:", response.data);
+          setGeneratedData(response.data);
+          // Force state update to ensure re-render
+          setTimeout(() => {
+            setIsGenerating(false);
+            console.log("🔄 Forced isGenerating to false");
+          }, 100);
+        } catch (error) {
+          console.error("❌ API call failed:", error);
+          setGenerationError(error);
+          setIsGenerating(false);
+          setTimeoutError(true);
+        }
+      };
+      
+      // Call immediately
+      makeApiCall();
     }
-  }, [params, isGenerating, generatedData, setQuery, hasTriggeredGeneration, model, modelApiKey, generateRoadmap, query]);
+  }, [params, hasTriggeredGeneration, isGenerating, generatedData, model, modelApiKey]);
+
+  // Fallback auto-generation with timeout
+  useEffect(() => {
+    const topic = params.get('topic');
+    if (topic && !generatedData && !isGenerating) {
+      const timeoutId = setTimeout(() => {
+        if (!hasTriggeredGeneration && !generatedData) {
+          console.log("⏰ Fallback auto-generation triggered for:", topic);
+          setHasTriggeredGeneration(true);
+          setQuery(topic);
+          
+          const makeApiCall = async () => {
+            setIsGenerating(true);
+            setGenerationError(null);
+            setTimeoutError(false);
+            
+            try {
+              const apiKeyParam = modelApiKey && modelApiKey.trim() !== "" ? `?apiKey=${modelApiKey}` : "";
+              const url = `/api/v1/${model}/roadmap${apiKeyParam}`;
+              
+              const response = await axios.post(url, { query: topic }, {
+                timeout: 30000,
+              });
+              
+              setGeneratedData(response.data);
+              setIsGenerating(false);
+            } catch (error) {
+              setGenerationError(error);
+              setIsGenerating(false);
+              setTimeoutError(true);
+            }
+          };
+          
+          makeApiCall();
+        }
+      }, 2000); // 2 second fallback
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [params, generatedData, isGenerating, hasTriggeredGeneration, model, modelApiKey, setQuery]);
 
   // Component mount test
   useEffect(() => {
@@ -123,7 +197,11 @@ export default function Roadmap({ roadmapId }: Props) {
     console.log("🎯 Initial params:", params.toString());
     console.log("🎯 Initial query:", query);
     console.log("🎯 Initial model:", model);
-  }, [params, query, model]);
+    console.log("🎯 Initial modelApiKey:", modelApiKey ? "SET" : "NOT SET");
+    console.log("🎯 Initial hasTriggeredGeneration:", hasTriggeredGeneration);
+    console.log("🎯 Initial generatedData:", !!generatedData);
+    console.log("🎯 Initial isGenerating:", isGenerating);
+  }, [params, query, model, modelApiKey, hasTriggeredGeneration, generatedData, isGenerating]);
 
   // Reset trigger flag when topic changes
   useEffect(() => {
@@ -136,7 +214,7 @@ export default function Roadmap({ roadmapId }: Props) {
     }
   }, [params, query]);
 
-  // Monitor state changes
+  // Monitor state changes and force re-render when data is ready
   useEffect(() => {
     console.log("📊 State update:");
     console.log("  - isGenerating:", isGenerating);
@@ -144,6 +222,12 @@ export default function Roadmap({ roadmapId }: Props) {
     console.log("  - error:", generationError);
     if (!isGenerating && generatedData) {
       console.log("✅ Roadmap generation completed successfully");
+    }
+    
+    // Force component re-render when we have data but are still generating
+    if (generatedData && isGenerating) {
+      console.log("🔄 Forcing isGenerating to false due to received data");
+      setIsGenerating(false);
     }
   }, [isGenerating, generatedData, generationError]);
 
@@ -163,8 +247,18 @@ export default function Roadmap({ roadmapId }: Props) {
     };
   }, [isGenerating]);
 
-  const roadmapData = roadmap?.content || generatedData?.tree || decodeFromURL(params);
+  const roadmapData = roadmap?.content || generatedData?.tree || generatedData?.text?.tree || decodeFromURL(params);
   const renderFlow = roadmapData?.[0]?.name || "";
+  
+  // Debug the roadmap data structure
+  console.log("🔍 Roadmap data structure:", {
+    roadmapContent: roadmap?.content,
+    generatedDataTree: generatedData?.tree,
+    generatedDataTextTree: generatedData?.text?.tree,
+    finalRoadmapData: roadmapData,
+    renderFlow: renderFlow,
+    hasData: roadmapData && roadmapData.length > 0
+  });
 
   // Debug logging
   console.log("🔍 Final state:");
@@ -181,8 +275,54 @@ export default function Roadmap({ roadmapId }: Props) {
   console.log("  - Timeout error:", timeoutError);
 
   return (
-    <>
-      <div className="mx-auto max-w-7xl">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      {/* Enhanced Header with Back Button */}
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/50">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Back Button and Title */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => router.push('/')}
+                className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </button>
+              <div className="hidden sm:block w-px h-6 bg-gray-300" />
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                <h1 className="text-lg font-semibold text-gray-900">
+                  {query || 'AI Roadmap Generator'}
+                </h1>
+              </div>
+            </div>
+            
+            {/* Status Indicator */}
+            <div className="flex items-center space-x-2">
+              {isGenerating ? (
+                <div className="flex items-center space-x-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Generating...</span>
+                </div>
+              ) : roadmapData && roadmapData.length > 0 ? (
+                <div className="flex items-center space-x-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-full text-sm font-medium">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>Ready</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 px-3 py-1.5 bg-gray-50 text-gray-600 rounded-full text-sm font-medium">
+                  <Clock className="w-4 h-4" />
+                  <span>Waiting</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         <GeneratorControls
           mutate={() => {}} // Empty function since we're not using React Query mutation
           isPending={isGenerating}
@@ -194,76 +334,132 @@ export default function Roadmap({ roadmapId }: Props) {
           key={roadmap?.visibility}
         />
       </div>
-      <Separator />
       {isGenerating ? (
-        <div className="h-[75vh] grid place-content-center">
-          <div className="text-center">
-            <Loader2 className="animate-spin w-8 h-8 mx-auto mb-4" />
-            <p className="text-gray-600">Generating your roadmap...</p>
+        <div className="min-h-[70vh] flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-4">
+            {/* Enhanced Loading Animation */}
+            <div className="relative mb-8">
+              <div className="w-20 h-20 mx-auto mb-4 relative">
+                <div className="absolute inset-0 rounded-full border-4 border-purple-100"></div>
+                <div className="absolute inset-0 rounded-full border-4 border-purple-600 border-t-transparent animate-spin"></div>
+                <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-purple-600 animate-pulse" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-semibold text-gray-900">Creating Your Roadmap</h3>
+                <p className="text-gray-600">AI is analyzing and structuring your learning path...</p>
+              </div>
+            </div>
+            
+            {/* Progress Steps */}
+            <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3 text-sm">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-gray-700">Analyzing topic requirements</span>
+                </div>
+                <div className="flex items-center space-x-3 text-sm">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{animationDelay: '0.5s'}}></div>
+                  <span className="text-gray-700">Structuring learning modules</span>
+                </div>
+                <div className="flex items-center space-x-3 text-sm">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+                  <span className="text-gray-700">Generating interactive roadmap</span>
+                </div>
+              </div>
+            </div>
+            
             {timeoutError && (
-              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg max-w-md mx-auto">
-                <p className="text-sm text-yellow-600">
-                  Taking longer than expected. Please wait or try again.
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Clock className="w-5 h-5 text-amber-600" />
+                  <h4 className="font-medium text-amber-800">Taking Longer Than Expected</h4>
+                </div>
+                <p className="text-sm text-amber-700">
+                  Complex roadmaps may take a bit longer. Please wait or try refreshing the page.
                 </p>
               </div>
             )}
             {generationError && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg max-w-md mx-auto">
-                <p className="text-sm text-red-600">
-                  Error: {(generationError as any)?.response?.data?.message || (generationError as any)?.message || "Unknown error"}
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">!</span>
+                  </div>
+                  <h4 className="font-medium text-red-800">Generation Error</h4>
+                </div>
+                <p className="text-sm text-red-700">
+                  {(generationError as any)?.response?.data?.message || (generationError as any)?.message || "An unexpected error occurred"}
                 </p>
               </div>
             )}
           </div>
         </div>
       ) : isRoadmapPending && roadmapId ? (
-        <div>
-          <div className="h-[75vh] grid place-content-center">
-            <Loader2 className="animate-spin w-8 h-8" />
+        <div className="min-h-[70vh] flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 mx-auto mb-4 relative">
+              <div className="absolute inset-0 rounded-full border-4 border-gray-200"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Roadmap</h3>
+            <p className="text-gray-600">Retrieving your saved roadmap...</p>
           </div>
         </div>
       ) : (
         <>
           {roadmapData && roadmapData.length > 0 ? (
-            <ExpandCollapse
-              key={renderFlow}
-              data={roadmapData}
-              isPending={isRoadmapPending || isGenerating}
-              roadmapId={roadmapId}
-            />
+            <div className="pb-8">
+              <ExpandCollapse
+                key={renderFlow}
+                data={roadmapData}
+                isPending={false} // Force isPending to false when we have data
+                roadmapId={roadmapId}
+              />
+            </div>
           ) : (
-            <div className="min-h-[75vh] flex items-center justify-center bg-gray-50">
-              <div className="text-center max-w-md mx-auto">
+            <div className="min-h-[70vh] flex items-center justify-center">
+              <div className="text-center max-w-lg mx-auto px-4">
                 <div className="mb-8">
-                  <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                    AI Roadmap Generator
+                  <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-purple-500 to-blue-600 rounded-2xl flex items-center justify-center">
+                    <Sparkles className="w-8 h-8 text-white" />
+                  </div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                    Ready to Generate
                   </h1>
+                  <p className="text-gray-600 text-lg">
+                    Your AI-powered learning roadmap will appear here
+                  </p>
                 </div>
                 
-                <div className="bg-white rounded-lg shadow-sm border p-6">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                      <p className="text-sm text-gray-600">
-                        Your roadmap will appear here once generated
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl">
+                      <div className="w-3 h-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full animate-pulse"></div>
+                      <p className="text-gray-700 font-medium">
+                        Waiting for roadmap generation to begin
                       </p>
                     </div>
                     {generatedData && !generatedData.status && (
-                      <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <h3 className="text-sm font-semibold text-red-800 mb-2">
-                          Roadmap Generation Failed
-                        </h3>
-                        <p className="text-sm text-red-600 mb-3">
+                      <div className="p-6 bg-red-50 border border-red-200 rounded-xl">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                            <span className="text-red-600 font-bold text-sm">!</span>
+                          </div>
+                          <h3 className="text-lg font-semibold text-red-800">
+                            Generation Failed
+                          </h3>
+                        </div>
+                        <p className="text-red-700 mb-4">
                           {generatedData.message || "Failed to generate roadmap"}
                         </p>
                         {generatedData.message?.includes("API key") && (
-                          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                            <p className="text-sm text-yellow-800">
-                              <strong>To fix this:</strong>
+                          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-amber-800 font-medium mb-3">
+                              🔧 Quick Fix Required:
                             </p>
-                            <ol className="text-sm text-yellow-700 mt-2 ml-4 list-decimal">
-                              <li>Get a free API key from <a href="https://console.groq.com/" target="_blank" rel="noopener noreferrer" className="underline">Groq Console</a></li>
-                              <li>Add it to your Vercel environment variables as <code>GROQ_API_KEY</code></li>
+                            <ol className="text-amber-700 space-y-2 ml-4 list-decimal">
+                              <li>Get a free API key from <a href="https://console.groq.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline font-medium">Groq Console</a></li>
+                              <li>Add it to your Vercel environment variables as <code className="bg-gray-100 px-2 py-1 rounded text-sm">GROQ_API_KEY</code></li>
                               <li>Redeploy your application</li>
                             </ol>
                           </div>
@@ -271,22 +467,32 @@ export default function Roadmap({ roadmapId }: Props) {
                       </div>
                     )}
                     {generationError && (
-                      <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <h3 className="text-sm font-semibold text-red-800 mb-2">
-                          Generation Error
-                        </h3>
-                        <p className="text-sm text-red-600">
+                      <div className="p-6 bg-red-50 border border-red-200 rounded-xl">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                            <span className="text-red-600 font-bold text-sm">✕</span>
+                          </div>
+                          <h3 className="text-lg font-semibold text-red-800">
+                            Generation Error
+                          </h3>
+                        </div>
+                        <p className="text-red-700">
                           {(generationError as any)?.response?.data?.message || (generationError as any)?.message || "An error occurred during generation"}
                         </p>
                       </div>
                     )}
                     {params.get('topic') && !generatedData && !isGenerating && (
-                      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <h3 className="text-sm font-semibold text-blue-800 mb-2">
-                          Manual Generation
-                        </h3>
-                        <p className="text-sm text-blue-600 mb-3">
-                          Auto-generation didn&apos;t trigger. Click the button below to generate the roadmap manually.
+                      <div className="p-6 bg-blue-50 border border-blue-200 rounded-xl">
+                        <div className="flex items-center space-x-3 mb-4">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Sparkles className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-blue-800">
+                            Ready to Generate
+                          </h3>
+                        </div>
+                        <p className="text-blue-700 mb-4">
+                          Auto-generation didn&apos;t start. Click below to create your personalized roadmap.
                         </p>
                         <button
                           onClick={() => {
@@ -296,9 +502,9 @@ export default function Roadmap({ roadmapId }: Props) {
                               generateRoadmap(topic);
                             }
                           }}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                         >
-                          Generate Roadmap for &quot;{params.get('topic')}&quot;
+                          🚀 Generate Roadmap for &quot;{params.get('topic')}&quot;
                         </button>
                       </div>
                     )}
@@ -309,6 +515,6 @@ export default function Roadmap({ roadmapId }: Props) {
           )}
         </>
       )}
-    </>
+    </div>
   );
 }
