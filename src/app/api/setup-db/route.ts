@@ -1,31 +1,43 @@
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { NextResponse } from "next/server";
 
-export async function POST() {
+export async function GET(req: NextRequest) {
   try {
-    // Create a default anonymous user if it doesn't exist
-    const anonymousUser = await db.user.upsert({
-      where: { id: "anonymous-user" },
-      update: {},
-      create: {
-        id: "anonymous-user",
-        name: "Anonymous User",
-        email: "anonymous@example.com",
-        credits: 999999,
-      },
-    });
+    // Test database connection
+    await db.$connect();
     
-    return NextResponse.json({
-      status: "success",
-      message: "Database setup completed",
-      user: anonymousUser,
-    });
+    // Push the schema to create tables
+    const { PrismaClient } = require('@prisma/client');
+    const { execSync } = require('child_process');
+    
+    try {
+      // Run prisma db push to create tables
+      execSync('npx prisma db push', { 
+        stdio: 'inherit',
+        env: { ...process.env }
+      });
+      
+      return NextResponse.json({
+        status: "success",
+        message: "Database setup completed successfully",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Database push error:', error);
+      return NextResponse.json({
+        status: "error",
+        message: "Failed to create database tables",
+        error: error instanceof Error ? error.message : "Unknown error"
+      }, { status: 500 });
+    }
   } catch (error) {
-    console.error("Database setup error:", error);
+    console.error('Database connection error:', error);
     return NextResponse.json({
       status: "error",
-      message: "Database setup failed",
-      error: error instanceof Error ? error.message : "Unknown error",
+      message: "Failed to connect to database",
+      error: error instanceof Error ? error.message : "Unknown error"
     }, { status: 500 });
+  } finally {
+    await db.$disconnect();
   }
 } 
