@@ -4,22 +4,28 @@
 
 echo "🚀 Starting Netlify build..."
 
-# Check if pnpm is available, if not install it
-if ! command -v pnpm &> /dev/null; then
-    echo "📦 Installing pnpm..."
-    npm install -g pnpm
-fi
-
-# Install dependencies
+# Install dependencies with legacy peer deps
 echo "📦 Installing dependencies..."
-pnpm install --frozen-lockfile
+npm install --legacy-peer-deps
+
+# Check if installation was successful
+if [ $? -ne 0 ]; then
+    echo "❌ npm install failed"
+    exit 1
+fi
 
 # Generate Prisma client
 echo "🔧 Generating Prisma client..."
-pnpm prisma generate
+npx prisma generate
 
 # Build the application
 echo "🏗️ Building application..."
-pnpm run build
+npm run build
+
+# Check if build was successful
+if [ $? -ne 0 ]; then
+    echo "❌ Build failed"
+    exit 1
+fi
 
 echo "✅ Build completed successfully!" 
