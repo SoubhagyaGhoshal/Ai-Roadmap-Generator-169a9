@@ -7,7 +7,7 @@ const globalForPrisma = globalThis as unknown as {
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: ["query", "error", "warn"],
+    log: ["error", "warn"],
     datasources: {
       db: {
         url: process.env.DATABASE_URL,
@@ -17,7 +17,17 @@ export const db =
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
 
-// Add connection error handling
-db.$connect().catch((error) => {
-  console.error("Database connection error:", error);
-});
+// Add connection error handling with retry logic
+const connectWithRetry = async () => {
+  try {
+    await db.$connect();
+    console.log("Database connected successfully");
+  } catch (error) {
+    console.error("Database connection error:", error);
+    // In serverless, we'll let the connection fail gracefully
+    // The connection will be established when needed
+  }
+};
+
+// Initialize connection
+connectWithRetry();

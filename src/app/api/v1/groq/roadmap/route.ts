@@ -59,22 +59,33 @@ export const POST = async (req: NextRequest) => {
     // Use exact matching instead of substring matching to prevent "java" from matching "javascript"
     const normalizedQuery = query.trim().toLowerCase();
 
-    const alreadyExists = await db.roadmap.findFirst({
-      where: {
-        title: {
-          mode: "insensitive",
-          equals: normalizedQuery,
+    let alreadyExists = null;
+    try {
+      alreadyExists = await db.roadmap.findFirst({
+        where: {
+          title: {
+            mode: "insensitive",
+            equals: normalizedQuery,
+          },
         },
-      },
-    });
+      });
+    } catch (dbError) {
+      console.error("Database query error:", dbError);
+      // Continue without database check if there's a connection issue
+    }
 
     if (alreadyExists) {
-      await incrementRoadmapSearchCount(alreadyExists.id);
-      const tree = JSON.parse(alreadyExists.content);
-      return NextResponse.json(
-        { status: true, tree, roadmapId: alreadyExists.id },
-        { status: 200 },
-      );
+      try {
+        await incrementRoadmapSearchCount(alreadyExists.id);
+        const tree = JSON.parse(alreadyExists.content);
+        return NextResponse.json(
+          { status: true, tree, roadmapId: alreadyExists.id },
+          { status: 200 },
+        );
+      } catch (error) {
+        console.error("Error processing existing roadmap:", error);
+        // Continue with generation if there's an error processing existing roadmap
+      }
     }
 
     console.log("Generating roadmap for query:", query);
@@ -221,9 +232,17 @@ Generate 3-5 chapters with 4-6 modules each. Return ONLY the JSON object. Use "$
 
       console.log("Generated tree:", tree);
       
-      const { data } = await saveRoadmap(query, tree);
+      let savedRoadmap = null;
+      try {
+        const { data } = await saveRoadmap(query, tree);
+        savedRoadmap = data;
+      } catch (saveError) {
+        console.error("Error saving roadmap to database:", saveError);
+        // Continue without saving if database is unavailable
+      }
+      
       return NextResponse.json(
-        { status: true, text: json, tree, roadmapId: data?.id },
+        { status: true, text: json, tree, roadmapId: savedRoadmap?.id },
         { status: 200 },
       );
     } catch (e) {
