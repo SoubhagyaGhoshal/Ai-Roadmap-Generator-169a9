@@ -14,17 +14,22 @@ const MutationFactory = (
       console.log("  - URL:", url);
       console.log("  - Method:", method);
       console.log("  - Body:", variables.body);
+      console.log("  - Timestamp:", new Date().toISOString());
       
       try {
         const response = await axios({
           url,
           method,
           data: variables.body,
+          timeout: 30000, // 30 second timeout
         });
         console.log("✅ API response received:", response.data);
+        console.log("✅ Response status:", response.status);
         return response.data;
       } catch (error) {
         console.error("❌ API request failed:", error);
+        console.error("❌ Error response:", (error as any)?.response?.data);
+        console.error("❌ Error status:", (error as any)?.response?.status);
         throw error;
       }
     },
@@ -47,6 +52,7 @@ export const useGenerateRoadmap = (
   console.log("  - Model:", model);
   console.log("  - API Key provided:", !!modelApiKey);
   console.log("  - Full URL:", fullUrl);
+  console.log("  - Timestamp:", new Date().toISOString());
   
   return MutationFactory(
     ["Generate Roadmap", query],
