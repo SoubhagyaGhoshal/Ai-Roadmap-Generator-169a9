@@ -7,15 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "netlify:build": "pnpm run build",
-    "netlify:dev": "pnpm run dev",
-    "db:studio": "pnpx prisma studio",
-    "db:generate": "pnpx prisma generate",
-    "db:migrate": "pnpx prisma migrate dev",
-    "db:push": "pnpx prisma db push",
-    "db:pull": "pnpx prisma db pull",
+    "netlify:build": "npm run build",
+    "netlify:dev": "npm run dev",
+    "db:studio": "npx prisma studio",
+    "db:generate": "npx prisma generate",
+    "db:migrate": "npx prisma migrate dev",
+    "db:push": "npx prisma db push",
+    "db:pull": "npx prisma db pull",
     "db:seed": "node ./prisma/seed.js",
-    "postinstall": "pnpx prisma generate"
+    "postinstall": "npx prisma generate"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^1.5.0",
