@@ -20,14 +20,14 @@ export default function GenerateButton({
     <Button
       onClick={onClick}
       disabled={disabled || isPending}
-      className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+      className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
     >
       {isPending ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       ) : (
         <Wand2 className="mr-2 h-4 w-4" />
       )}
-      {autoGenerate ? "Auto Generate" : "Generate"}
+      {isPending ? "Generating..." : (autoGenerate ? "Auto Generate" : "Generate")}
     </Button>
   );
 }

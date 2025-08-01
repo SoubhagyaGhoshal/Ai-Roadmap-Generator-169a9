@@ -20,7 +20,7 @@ import {
 import { Visibility } from "@prisma/client";
 import { UseMutateFunction } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
-import { Save, Trash, ArrowLeft, Sparkles } from "lucide-react";
+import { Save, Trash, ArrowLeft, Sparkles, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -440,10 +440,51 @@ export const GeneratorControls = (props: Props) => {
       });
     }
 
-    // Everyone has unlimited credits now
-    mutate({
-      body: { query: currentQuery },
+    // Check if we have an API key for the selected model
+    const { modelApiKey } = useUIStore.getState();
+    const hasApiKey = modelApiKey && modelApiKey.trim() !== "";
+    
+    if (!hasApiKey) {
+      // Check if environment variable is available for the selected model
+      const envKeyMap = {
+        groq: process.env.GROQ_API_KEY,
+        openai: process.env.OPENAI_API_KEY,
+        cohere: process.env.COHERE_API_KEY,
+        gemini: process.env.GEMINI_API_KEY,
+      };
+      
+      const hasEnvKey = envKeyMap[model as keyof typeof envKeyMap];
+      
+      if (!hasEnvKey) {
+        return toast.error("API Key Required", {
+          description: `Please provide an API key for ${model.toUpperCase()} or add ${model.toUpperCase()}_API_KEY to your environment variables.`,
+          duration: 6000,
+        });
+      }
+    }
+
+    // Show loading toast
+    toast.loading("Generating roadmap...", {
+      description: `Creating learning path for: ${currentQuery}`,
+      duration: 10000,
     });
+
+    try {
+      // Call the mutation
+      await mutate({
+        body: { query: currentQuery },
+      });
+      
+      // Success toast will be handled by the mutation success callback
+    } catch (error) {
+      console.error("Generation error:", error);
+      
+      // Show error toast
+      toast.error("Generation Failed", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+        duration: 6000,
+      });
+    }
   };
 
   const onValueChange = async (value: Visibility) => {
@@ -519,11 +560,11 @@ export const GeneratorControls = (props: Props) => {
               <Input
                 type="text"
                 disabled={disableUI}
-                placeholder="✨ Enter any topic (e.g., Java, Python, React, Machine Learning, DevOps, AWS, Docker, Kubernetes, TypeScript, C++, Go, Rust, Swift, Kotlin, Flutter, Angular, Vue.js, Django, Spring Boot, Laravel, .NET, GraphQL, MongoDB, PostgreSQL, Redis, Elasticsearch, Apache Kafka, RabbitMQ, Jenkins, GitHub Actions, Terraform, Ansible, AWS Lambda, Serverless, IoT, Blockchain, Cryptocurrency, Smart Contracts, Solidity, Web3, DeFi, NFT, Metaverse, AR/VR, Computer Vision, Natural Language Processing, Deep Learning, Neural Networks, TensorFlow, PyTorch, Scikit-learn, OpenCV, NLTK, spaCy, BERT, GPT, Transformer, CNN, RNN, LSTM, GAN, Reinforcement Learning, Data Engineering, ETL, Data Warehousing, Big Data, Hadoop, Spark, Airflow, dbt, Snowflake, Redshift, BigQuery, Tableau, Power BI, Jupyter, Streamlit, Dash, Plotly, Pandas, NumPy, SciPy, Statistics, Probability, Linear Algebra, Calculus, Optimization, Algorithms, Data Structures, Design Patterns, Clean Code, SOLID Principles, TDD, BDD, DDD, Microservices Architecture, Event-Driven Architecture, CQRS, Event Sourcing, Domain-Driven Design, Clean Architecture, Repository Pattern, Factory Pattern, Observer Pattern, Strategy Pattern, Command Pattern, Adapter Pattern, Decorator Pattern, Singleton Pattern, Builder Pattern, Prototype Pattern, Facade Pattern, Proxy Pattern, Bridge Pattern, Composite Pattern, Flyweight Pattern, Template Method Pattern, Chain of Responsibility Pattern, Mediator Pattern, Memento Pattern, State Pattern, Visitor Pattern, Interpreter Pattern, Iterator Pattern, MVC, MVP, MVVM, Flux, Redux, MobX, Zustand, Recoil, Jotai, XState, FSM, State Machine, Workflow Engine, BPMN, Business Process Management, Workflow Automation, RPA, UiPath, Automation Anywhere, Blue Prism, Power Automate, Zapier, IFTTT, Webhooks, API Gateway, Service Mesh, Istio, Linkerd, Consul, Envoy, Load Balancer, CDN, CloudFront, CloudFlare, Akamai, Vercel, Netlify, Heroku, Railway, Render, DigitalOcean, Linode, Vultr, AWS EC2, Azure VM, Google Compute Engine, AWS S3, Azure Blob Storage, Google Cloud Storage, AWS RDS, Azure SQL Database, Google Cloud SQL, AWS DynamoDB, Azure Cosmos DB, Google Firestore, AWS Lambda, Azure Functions, Google Cloud Functions, AWS API Gateway, Azure API Management, Google Cloud Endpoints, AWS CloudFormation, Azure Resource Manager, Google Cloud Deployment Manager, Terraform, Pulumi, CloudFormation, SAM, Serverless Framework, Zappa, Chalice, AWS Amplify, Azure Static Web Apps, Google Firebase, Supabase, Hasura, Strapi, Sanity, Contentful, Prismic, Ghost, WordPress, Drupal, Joomla, Magento, Shopify, WooCommerce, BigCommerce, Salesforce, HubSpot, Pipedrive, Zoho, Monday.com, Asana, Trello, Jira, Confluence, Notion, Airtable, Coda, Figma, Sketch, Adobe XD, InVision, Marvel, Framer, Webflow, Bubble, Zapier, Make, n8n, Retool, Appsmith, Budibase, Tooljet, AppGyver, OutSystems, Mendix, Power Apps, Power Automate, Power BI, Power Query, DAX, M, Power Fx, Power Virtual Agents, Power Platform, Microsoft 365, SharePoint, Teams, OneDrive, OneNote, Outlook, Excel, Word, PowerPoint, Access, Publisher, Visio, Project, Planner, To Do, Forms, Sway, Stream, Yammer, Delve, Power BI, Power Apps, Power Automate, Power Virtual Agents, Power Platform, Dynamics 365, Azure DevOps, GitHub, GitLab, Bitbucket, SourceTree, GitKraken, VS Code, IntelliJ IDEA, Eclipse, NetBeans, Visual Studio, Xcode, Android Studio, Sublime Text, Atom, Vim, Emacs, Nano, Notepad++, Brackets, WebStorm, PhpStorm, PyCharm, DataGrip, CLion, Rider, AppCode, GoLand, RubyMine)"
+                placeholder={disableUI ? "Generating roadmap..." : "✨ Enter any topic (e.g., Java, Python, React, Machine Learning, DevOps, AWS, Docker, Kubernetes, TypeScript, C++, Go, Rust, Swift, Kotlin, Flutter, Angular, Vue.js, Django, Spring Boot, Laravel, .NET, GraphQL, MongoDB, PostgreSQL, Redis, Elasticsearch, Apache Kafka, RabbitMQ, Jenkins, GitHub Actions, Terraform, Ansible, AWS Lambda, Serverless, IoT, Blockchain, Cryptocurrency, Smart Contracts, Solidity, Web3, DeFi, NFT, Metaverse, AR/VR, Computer Vision, Natural Language Processing, Deep Learning, Neural Networks, TensorFlow, PyTorch, Scikit-learn, OpenCV, NLTK, spaCy, BERT, GPT, Transformer, CNN, RNN, LSTM, GAN, Reinforcement Learning, Data Engineering, ETL, Data Warehousing, Big Data, Hadoop, Spark, Airflow, dbt, Snowflake, Redshift, BigQuery, Tableau, Power BI, Jupyter, Streamlit, Dash, Plotly, Pandas, NumPy, SciPy, Statistics, Probability, Linear Algebra, Calculus, Optimization, Algorithms, Data Structures, Design Patterns, Clean Code, SOLID Principles, TDD, BDD, DDD, Microservices Architecture, Event-Driven Architecture, CQRS, Event Sourcing, Domain-Driven Design, Clean Architecture, Repository Pattern, Factory Pattern, Observer Pattern, Strategy Pattern, Command Pattern, Adapter Pattern, Decorator Pattern, Singleton Pattern, Builder Pattern, Prototype Pattern, Facade Pattern, Proxy Pattern, Bridge Pattern, Composite Pattern, Flyweight Pattern, Template Method Pattern, Chain of Responsibility Pattern, Mediator Pattern, Memento Pattern, State Pattern, Visitor Pattern, Interpreter Pattern, Iterator Pattern, MVC, MVP, MVVM, Flux, Redux, MobX, Zustand, Recoil, Jotai, XState, FSM, State Machine, Workflow Engine, BPMN, Business Process Management, Workflow Automation, RPA, UiPath, Automation Anywhere, Blue Prism, Power Automate, Zapier, IFTTT, Webhooks, API Gateway, Service Mesh, Istio, Linkerd, Consul, Envoy, Load Balancer, CDN, CloudFront, CloudFlare, Akamai, Vercel, Netlify, Heroku, Railway, Render, DigitalOcean, Linode, Vultr, AWS EC2, Azure VM, Google Compute Engine, AWS S3, Azure Blob Storage, Google Cloud Storage, AWS RDS, Azure SQL Database, Google Cloud SQL, AWS DynamoDB, Azure Cosmos DB, Google Firestore, AWS Lambda, Azure Functions, Google Cloud Functions, AWS API Gateway, Azure API Management, Google Cloud Endpoints, AWS CloudFormation, Azure Resource Manager, Google Cloud Deployment Manager, Terraform, Pulumi, CloudFormation, SAM, Serverless Framework, Zappa, Chalice, AWS Amplify, Azure Static Web Apps, Google Firebase, Supabase, Hasura, Strapi, Sanity, Contentful, Prismic, Ghost, WordPress, Drupal, Joomla, Magento, Shopify, WooCommerce, BigCommerce, Salesforce, HubSpot, Pipedrive, Zoho, Monday.com, Asana, Trello, Jira, Confluence, Notion, Airtable, Coda, Figma, Sketch, Adobe XD, InVision, Marvel, Framer, Webflow, Bubble, Zapier, Make, n8n, Retool, Appsmith, Budibase, Tooljet, AppGyver, OutSystems, Mendix, Power Apps, Power Automate, Power BI, Power Query, DAX, M, Power Fx, Power Virtual Agents, Power Platform, Microsoft 365, SharePoint, Teams, OneDrive, OneNote, Outlook, Excel, Word, PowerPoint, Access, Publisher, Visio, Project, Planner, To Do, Forms, Sway, Stream, Yammer, Delve, Power BI, Power Apps, Power Automate, Power Virtual Agents, Power Platform, Dynamics 365, Azure DevOps, GitHub, GitLab, Bitbucket, SourceTree, GitKraken, VS Code, IntelliJ IDEA, Eclipse, NetBeans, Visual Studio, Xcode, Android Studio, Sublime Text, Atom, Vim, Emacs, Nano, Notepad++, Brackets, WebStorm, PhpStorm, PyCharm, DataGrip, CLion, Rider, AppCode, GoLand, RubyMine)"}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" && !disableUI) {
                     onSubmit();
                   }
                 }}
@@ -532,7 +573,11 @@ export const GeneratorControls = (props: Props) => {
               
               {/* Sparkle icon */}
               <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-indigo-400 transition-colors duration-300">
-                <Sparkles size={20} />
+                {disableUI ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
+                ) : (
+                  <Sparkles size={20} />
+                )}
               </div>
             </div>
           )}

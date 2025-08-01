@@ -42,6 +42,17 @@ export const POST = async (req: NextRequest) => {
       );
     }
 
+    // Validate API key format (basic check)
+    if (groqApiKey.length < 10) {
+      return NextResponse.json(
+        { 
+          status: false, 
+          message: "Invalid API key format. Please check your GROQ_API_KEY." 
+        },
+        { status: 400 },
+      );
+    }
+
     console.log("Using API key:", groqApiKey ? "available" : "not available");
 
     const openai = new OpenAI({
@@ -51,7 +62,22 @@ export const POST = async (req: NextRequest) => {
 
     if (!query) {
       return NextResponse.json(
-        { status: false, message: "Please send query." },
+        { status: false, message: "Please provide a topic to generate a roadmap for." },
+        { status: 400 },
+      );
+    }
+
+    // Validate query length
+    if (query.length < 2) {
+      return NextResponse.json(
+        { status: false, message: "Topic must be at least 2 characters long." },
+        { status: 400 },
+      );
+    }
+
+    if (query.length > 200) {
+      return NextResponse.json(
+        { status: false, message: "Topic is too long. Please use a shorter topic (max 200 characters)." },
         { status: 400 },
       );
     }
@@ -255,10 +281,20 @@ Generate 3-5 chapters with 4-6 modules each. Return ONLY the JSON object. Use "$
         );
       } catch (e) {
         console.error("Error parsing response:", e);
+        
+        // Provide more specific error messages
+        let errorMessage = "An unexpected error occurred while generating roadmap. Please try again or use a different keyword/query.";
+        
+        if (e instanceof SyntaxError) {
+          errorMessage = "The AI response was not in the expected format. Please try again with a different topic.";
+        } else if (e instanceof Error) {
+          errorMessage = e.message;
+        }
+        
         return NextResponse.json(
           {
             status: false,
-            message: "An unexpected error occurred while generating roadmap. Please try again or use a different keyword/query.",
+            message: errorMessage,
             error: e instanceof Error ? e.message : "Unknown error",
           },
           { status: 500 },

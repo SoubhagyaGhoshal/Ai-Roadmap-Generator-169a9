@@ -85,11 +85,40 @@ export default function Roadmap({ roadmapId }: Props) {
       });
       
       console.log("✅ API call successful:", response.data);
-      setGeneratedData(response.data);
+      
+      // Check if the response has the expected structure
+      if (response.data && response.data.status === true && response.data.tree) {
+        console.log("✅ Valid roadmap data received:", response.data.tree);
+        setGeneratedData(response.data);
+      } else if (response.data && response.data.status === false) {
+        console.log("❌ API returned error:", response.data.message);
+        setGenerationError(new Error(response.data.message || "Generation failed"));
+      } else {
+        console.log("⚠️ Unexpected response format:", response.data);
+        setGeneratedData(response.data);
+      }
+      
       setIsGenerating(false);
     } catch (error) {
       console.error("❌ API call failed:", error);
-      setGenerationError(error);
+      
+      // Handle specific error types
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 400) {
+          setGenerationError(new Error(error.response.data?.message || "Invalid request"));
+        } else if (error.response?.status === 401) {
+          setGenerationError(new Error("API key is invalid or missing. Please check your API key."));
+        } else if (error.response?.status === 429) {
+          setGenerationError(new Error("Rate limit exceeded. Please try again later."));
+        } else if (error.code === 'ECONNABORTED') {
+          setGenerationError(new Error("Request timed out. Please try again."));
+        } else {
+          setGenerationError(new Error(error.response?.data?.message || "Network error occurred"));
+        }
+      } else {
+        setGenerationError(error);
+      }
+      
       setIsGenerating(false);
       setTimeoutError(true);
     }
@@ -132,7 +161,19 @@ export default function Roadmap({ roadmapId }: Props) {
           });
           
           console.log("✅ API call successful:", response.data);
-          setGeneratedData(response.data);
+          
+          // Check if the response has the expected structure
+          if (response.data && response.data.status === true && response.data.tree) {
+            console.log("✅ Valid roadmap data received:", response.data.tree);
+            setGeneratedData(response.data);
+          } else if (response.data && response.data.status === false) {
+            console.log("❌ API returned error:", response.data.message);
+            setGenerationError(new Error(response.data.message || "Generation failed"));
+          } else {
+            console.log("⚠️ Unexpected response format:", response.data);
+            setGeneratedData(response.data);
+          }
+          
           // Force state update to ensure re-render
           setTimeout(() => {
             setIsGenerating(false);
@@ -247,17 +288,36 @@ export default function Roadmap({ roadmapId }: Props) {
     };
   }, [isGenerating]);
 
-  const roadmapData = roadmap?.content || generatedData?.tree || generatedData?.text?.tree || decodeFromURL(params);
+  // Extract roadmap data with proper fallback logic
+  let roadmapData = null;
+  
+  if (roadmap?.content) {
+    // Data from database
+    roadmapData = roadmap.content;
+  } else if (generatedData?.tree) {
+    // Data from API response (primary path)
+    roadmapData = generatedData.tree;
+  } else if (generatedData?.text?.tree) {
+    // Data from API response (fallback path)
+    roadmapData = generatedData.text.tree;
+  } else {
+    // Data from URL parameters (fallback)
+    roadmapData = decodeFromURL(params);
+  }
+  
   const renderFlow = roadmapData?.[0]?.name || "";
   
   // Debug the roadmap data structure
   console.log("🔍 Roadmap data structure:", {
     roadmapContent: roadmap?.content,
+    generatedData: generatedData,
     generatedDataTree: generatedData?.tree,
     generatedDataTextTree: generatedData?.text?.tree,
     finalRoadmapData: roadmapData,
     renderFlow: renderFlow,
-    hasData: roadmapData && roadmapData.length > 0
+    hasData: roadmapData && Array.isArray(roadmapData) && roadmapData.length > 0,
+    dataType: typeof roadmapData,
+    isArray: Array.isArray(roadmapData)
   });
 
   // Debug logging
@@ -407,7 +467,7 @@ export default function Roadmap({ roadmapId }: Props) {
         </div>
       ) : (
         <>
-          {roadmapData && roadmapData.length > 0 ? (
+          {roadmapData && Array.isArray(roadmapData) && roadmapData.length > 0 ? (
             <div className="pb-8">
               <ExpandCollapse
                 key={renderFlow}
@@ -506,6 +566,48 @@ export default function Roadmap({ roadmapId }: Props) {
                         >
                           🚀 Generate Roadmap for &quot;{params.get('topic')}&quot;
                         </button>
+                      </div>
+                    )}
+                    
+                    {/* Manual input section for when no topic is provided */}
+                    {!params.get('topic') && !generatedData && !isGenerating && (
+                      <div className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
+                        <div className="flex items-center space-x-3 mb-4">
+                          <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                            <Sparkles className="w-4 h-4 text-white" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-purple-800">
+                            Manual Generation
+                          </h3>
+                        </div>
+                        <p className="text-purple-700 mb-4">
+                          Enter any topic below to generate a personalized learning roadmap.
+                        </p>
+                        <div className="space-y-4">
+                          <input
+                            type="text"
+                            placeholder="Enter topic (e.g., JavaScript, Python, React, Machine Learning...)"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && query.trim()) {
+                                generateRoadmap(query.trim());
+                              }
+                            }}
+                            className="w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-200/50 transition-all duration-300 text-lg"
+                          />
+                          <button
+                            onClick={() => {
+                              if (query.trim()) {
+                                generateRoadmap(query.trim());
+                              }
+                            }}
+                            disabled={!query.trim()}
+                            className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            🚀 Generate Roadmap
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
