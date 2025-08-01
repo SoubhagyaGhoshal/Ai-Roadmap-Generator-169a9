@@ -12,6 +12,9 @@ import { GeneratorControls } from "@/components/flow-components/generator-contro
 import { useUIStore } from "../../lib/stores/useUI";
 import { useEffect, useRef, useState, useCallback } from "react";
 import axios from "axios";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { KeyRound, Eye, EyeOff } from "lucide-react";
 
 interface Props {
   roadmapId?: string;
@@ -34,7 +37,17 @@ export default function Roadmap({ roadmapId }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedData, setGeneratedData] = useState<any>(null);
   const [generationError, setGenerationError] = useState<any>(null);
+  const [userApiKey, setUserApiKey] = useState<string>("");
+  const [showApiKey, setShowApiKey] = useState<boolean>(false);
+  const [apiKeyFromStorage, setApiKeyFromStorage] = useState<string>("");
   
+  // Load API key from localStorage on component mount
+  useEffect(() => {
+    const storedApiKey = localStorage.getItem("GROQ_API_KEY") || "";
+    setApiKeyFromStorage(storedApiKey);
+    setUserApiKey(storedApiKey);
+  }, []);
+
   // Handle topic query parameter from URL
   useEffect(() => {
     const topic = params.get('topic');
@@ -72,14 +85,16 @@ export default function Roadmap({ roadmapId }: Props) {
     setIsGenerating(true);
     setGenerationError(null);
     setTimeoutError(false);
-    
+
     try {
-      const apiKeyParam = modelApiKey && modelApiKey.trim() !== "" ? `?apiKey=${modelApiKey}` : "";
+      // Use user-provided API key or stored API key or modelApiKey
+      const effectiveApiKey = userApiKey.trim() || apiKeyFromStorage.trim() || modelApiKey;
+      const apiKeyParam = effectiveApiKey && effectiveApiKey.trim() !== "" ? `?apiKey=${effectiveApiKey}` : "";
       const url = `/api/v1/${model}/roadmap${apiKeyParam}`;
-      
+
       console.log("📡 Making API call to:", url);
       console.log("📡 Request body:", { query: topic });
-      
+
       const response = await axios.post(url, { query: topic }, {
         timeout: 30000,
       });
@@ -150,7 +165,9 @@ export default function Roadmap({ roadmapId }: Props) {
         setTimeoutError(false);
         
         try {
-          const apiKeyParam = modelApiKey && modelApiKey.trim() !== "" ? `?apiKey=${modelApiKey}` : "";
+          // Use user-provided API key or stored API key or modelApiKey
+          const effectiveApiKey = userApiKey.trim() || apiKeyFromStorage.trim() || modelApiKey;
+          const apiKeyParam = effectiveApiKey && effectiveApiKey.trim() !== "" ? `?apiKey=${effectiveApiKey}` : "";
           const url = `/api/v1/${model}/roadmap${apiKeyParam}`;
           
           console.log("📡 Making API call to:", url);
@@ -536,11 +553,136 @@ export default function Roadmap({ roadmapId }: Props) {
                             Generation Error
                           </h3>
                         </div>
-                        <p className="text-red-700">
+                        <p className="text-red-700 mb-4">
                           {(generationError as any)?.response?.data?.message || (generationError as any)?.message || "An error occurred during generation"}
                         </p>
+                        {((generationError as any)?.response?.data?.message || (generationError as any)?.message || "").includes("API key") && (
+                          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <p className="text-yellow-800 font-medium mb-3">
+                              🔑 Enter your API key to continue:
+                            </p>
+                            <div className="flex flex-col space-y-3">
+                              <div className="flex items-center space-x-2">
+                                <div className="relative flex-1">
+                                  <Input
+                                    type={showApiKey ? "text" : "password"}
+                                    placeholder="Enter your GROQ API key"
+                                    value={userApiKey}
+                                    onChange={(e) => setUserApiKey(e.target.value)}
+                                    className="pr-10"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowApiKey(!showApiKey)}
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                  >
+                                    {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                                  </button>
+                                </div>
+                                <Button
+                                  onClick={() => {
+                                    if (userApiKey.trim()) {
+                                      localStorage.setItem("GROQ_API_KEY", userApiKey.trim());
+                                      setApiKeyFromStorage(userApiKey.trim());
+                                      const topic = params.get('topic') || query;
+                                      if (topic) {
+                                        generateRoadmap(topic);
+                                      }
+                                    }
+                                  }}
+                                  disabled={!userApiKey.trim()}
+                                  className="flex items-center space-x-2"
+                                >
+                                  <KeyRound size={16} />
+                                  <span>Save & Generate</span>
+                                </Button>
+                              </div>
+                              <p className="text-sm text-yellow-700">
+                                Get a free API key from{" "}
+                                <a
+                                  href="https://console.groq.com/"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 underline font-medium"
+                                >
+                                  Groq Console
+                                </a>
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
+                    {/* API Key Input Section - Show when no API key is available */}
+                    {!userApiKey && !apiKeyFromStorage && !modelApiKey && (
+                      <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl mb-6">
+                        <div className="flex items-center space-x-3 mb-4">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <KeyRound className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-blue-800">
+                            API Key Required
+                          </h3>
+                        </div>
+                        <p className="text-blue-700 mb-4">
+                          To generate your personalized roadmap, please enter your GROQ API key below.
+                        </p>
+                        <div className="flex flex-col space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="relative flex-1">
+                              <Input
+                                type={showApiKey ? "text" : "password"}
+                                placeholder="Enter your GROQ API key"
+                                value={userApiKey}
+                                onChange={(e) => setUserApiKey(e.target.value)}
+                                className="pr-10"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowApiKey(!showApiKey)}
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                              >
+                                {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </button>
+                            </div>
+                            <Button
+                              onClick={() => {
+                                if (userApiKey.trim()) {
+                                  localStorage.setItem("GROQ_API_KEY", userApiKey.trim());
+                                  setApiKeyFromStorage(userApiKey.trim());
+                                  const topic = params.get('topic') || query;
+                                  if (topic) {
+                                    generateRoadmap(topic);
+                                  }
+                                }
+                              }}
+                              disabled={!userApiKey.trim()}
+                              className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                            >
+                              <KeyRound size={16} />
+                              <span>Save & Generate</span>
+                            </Button>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <p className="text-blue-700">
+                              Get a free API key from{" "}
+                              <a
+                                href="https://console.groq.com/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 underline font-medium"
+                              >
+                                Groq Console
+                              </a>
+                            </p>
+                            <span className="text-blue-600 text-xs bg-blue-100 px-2 py-1 rounded-full">
+                              Free • Fast • Secure
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {params.get('topic') && !generatedData && !isGenerating && (
                       <div className="p-6 bg-blue-50 border border-blue-200 rounded-xl">
                         <div className="flex items-center space-x-3 mb-4">
@@ -552,19 +694,27 @@ export default function Roadmap({ roadmapId }: Props) {
                           </h3>
                         </div>
                         <p className="text-blue-700 mb-4">
-                          Auto-generation didn&apos;t start. Click below to create your personalized roadmap.
+                          {(userApiKey || apiKeyFromStorage || modelApiKey) ? 
+                            "Auto-generation didn't start. Click below to create your personalized roadmap." :
+                            "Please add your API key above to enable roadmap generation."
+                          }
                         </p>
                         <button
                           onClick={() => {
                             const topic = params.get('topic');
-                            if (topic) {
+                            if (topic && (userApiKey || apiKeyFromStorage || modelApiKey)) {
                               setQuery(topic);
                               generateRoadmap(topic);
                             }
                           }}
-                          className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                          disabled={!(userApiKey || apiKeyFromStorage || modelApiKey)}
+                          className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg transform ${
+                            (userApiKey || apiKeyFromStorage || modelApiKey)
+                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl hover:-translate-y-0.5 cursor-pointer"
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          }`}
                         >
-                          🚀 Generate Roadmap for &quot;{params.get('topic')}&quot;
+                          🚀 Generate My Roadmap
                         </button>
                       </div>
                     )}
